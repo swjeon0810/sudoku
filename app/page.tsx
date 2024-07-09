@@ -1,10 +1,12 @@
 "use client";
-import { useState } from "react";
-import NumberBar from "./components/NumberBar";
+import { useRef, useState } from "react";
 import { IoCloseOutline } from "react-icons/io5";
 import { VscDebugRestart } from "react-icons/vsc";
 import { MdUndo } from "react-icons/md";
+import { TfiPencilAlt, TfiEraser } from "react-icons/tfi";
 import classNames from "classnames";
+import _ from "lodash";
+import ResetModal from "./components/ResetModal";
 
 const example2 = [
   [0, 3, 0, 0, 6, 2, 0, 7, 0],
@@ -23,8 +25,8 @@ type SudokuCell = {
   col: number;
   value: number;
   subgrid: number;
-  fix: boolean;
-  duplicate: boolean;
+  fixed: boolean;
+  duplicated: boolean;
 };
 
 type SudokuGrid = SudokuCell[][];
@@ -41,8 +43,8 @@ const generateEmptyGrid = (): SudokuGrid => {
         col,
         value,
         subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
-        fix: value != 0,
-        duplicate: false,
+        fixed: value != 0,
+        duplicated: false,
       });
     }
     grid.push(currentRow);
@@ -52,84 +54,109 @@ const generateEmptyGrid = (): SudokuGrid => {
 
 export default function Home() {
   const [sudokuGrid, setSudokuGrid] = useState<SudokuGrid>(generateEmptyGrid());
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [inputNum, setInputNum] = useState<number | null>(null);
+  const [onRemove, setOnRemove] = useState(false);
 
-  const [activeNum, setActiveNum] = useState(-1);
-  const initialCellSelection = {
-    grid: -1,
-    row: -1,
-    col: -1,
-    value: -1,
+  const [targetCell, setTargetCell] = useState<SudokuCell | null>(null);
+  const historyRef = useRef<SudokuGrid[]>([]); // 그리드 기록을 저장해둠
+  const handleResetBtn = () => {
+    setShowResetModal(true);
   };
-  const [cellSelected, setCellSelected] = useState(initialCellSelection);
-
+  const reset = () => {
+    // 다시 시작 이벤트
+    setTargetCell(null); // 셀 선택 해제
+    setInputNum(null);
+    setSudokuGrid(generateEmptyGrid());
+    historyRef.current = [];
+  };
+  const undo = () => {
+    // 실행 취소 이벤트
+    setTargetCell(null); // 셀 선택 해제
+    const lastest = historyRef.current.pop();
+    lastest != undefined && setSudokuGrid(lastest);
+  };
   const cellClickEvent = (cell: SudokuCell) => {
     //셀 클릭 이벤트
-    console.log(
-      `선택값: ${cell.value}\nsubgrid: ${cell.subgrid} \nrow: ${cell.row} \ncol: ${cell.col} \nfix: ${cell.fix} \nduplicated: ${cell.duplicate}`
-    );
+    const { row, col, fixed, value } = cell;
+    setTargetCell(cell);
 
-    setCellSelected({
-      grid: cell.subgrid,
-      row: cell.row,
-      col: cell.col,
-      value: cell.value,
-    });
-
-    validateGrid();
-    if (activeNum == -1) {
-      // "쓰기 모드 활성화 아닌경우"
+    if (onRemove) {
+      // "제거 모드인 경우"
+      !fixed && remove(row, col);
       return;
+    }
+
+    if (fixed) {
+      //고정값인 경우
+      setInputNum(-1);
+      return;
+    }
+    if (inputNum === null) return;
+
+    if (inputNum === value) {
+      // 똑같은 값이 들어가있는 경우 지우기
+      remove(row, col);
     } else {
-      // "쓰기모드" 활성화인 경우
-      if (cell.fix) {
-        setActiveNum(-1);
-        return;
-      } else if (cell.value === activeNum) {
-        // 똑같은 값이 들어가있는 경우 지우기
-        setSudokuGrid((prevGrid) => {
-          const newGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
-          newGrid[cell.row][cell.col] = {
-            ...newGrid[cell.row][cell.col],
-            value: 0,
-            duplicate: false,
-          };
-          return newGrid;
-        });
-      } else {
-        // 고정값이 아닌 경우, 새로운 값 입력
-        setSudokuGrid((prevGrid) => {
-          const newGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
-          newGrid[cell.row][cell.col] = {
-            ...newGrid[cell.row][cell.col],
-            value: activeNum,
-          };
-          // 중복 체크: 행, 열, 그리드 내에서만 직접 체크
-
-          const duplicateCells: SudokuCell[] = checkDuplicates(
-            newGrid,
-            cell.row,
-            cell.col
-          );
-
-          duplicateCells.map(({ row, col }) => {
-            newGrid[row][col] = { ...newGrid[row][col], duplicate: true };
-          });
-
-          return newGrid;
-        });
-      }
+      // 고정값이 아닌 경우, 새로운 값 입력
+      updateGrid(row, col, inputNum);
     }
   };
-  const checkDuplicates = (newGrid: SudokuGrid, row: number, col: number) => {
-    const duplicateInRow = newGrid[row].filter((c) => c.value == activeNum);
+
+  const updateGrid = (row: number, col: number, newValue: number) => {
+    //셀 값 변경
+    historyRef.current.push(_.cloneDeep(sudokuGrid));
+
+    setSudokuGrid((prevGrid) => {
+      const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
+      newGrid[row][col] = {
+        ...newGrid[row][col],
+        value: newValue,
+      };
+
+      const duplicateCells: SudokuCell[] = checkDuplicates(
+        newGrid,
+        row,
+        col,
+        newValue
+      );
+
+      duplicateCells.map(({ row, col }) => {
+        newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
+      });
+
+      return newGrid;
+    });
+  };
+  const remove = (row: number, col: number) => {
+    // 숫자 지우기
+    setSudokuGrid((prevGrid) => {
+      const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
+      newGrid[row][col] = {
+        ...newGrid[row][col],
+        value: -1,
+        duplicated: false,
+      };
+
+      return newGrid;
+    });
+  };
+  const checkDuplicates = (
+    newGrid: SudokuGrid,
+    row: number,
+    col: number,
+    targetNum: number
+  ) => {
+    // 셀에 숫자를 입력할 때 연관 그리드에 중복값이 있는지 체크하는 함수.
+    const duplicateInRow = newGrid[row].filter((c) => c.value == targetNum);
     const cellsInCol = newGrid.map((row) => row[col]);
-    const duplicateInCol = cellsInCol.filter((c) => c.value == activeNum);
+    const duplicateInCol = cellsInCol.filter((c) => c.value == targetNum);
     const subgridRowStart = Math.floor(row / 3) * 3;
     const subgridColStart = Math.floor(col / 3) * 3;
     const duplicateInSubgrid = [];
     for (let r = subgridRowStart; r < subgridRowStart + 3; r++) {
       for (let c = subgridColStart; c < subgridColStart + 3; c++) {
-        newGrid[r][c].value === activeNum &&
+        newGrid[r][c].value === targetNum &&
           duplicateInSubgrid.push(newGrid[r][c]);
       }
     }
@@ -139,51 +166,47 @@ export default function Home() {
 
     return allDuplicateCells;
   };
-
-  const validateGrid = () => {
-    // 각 row 별 검색
-    sudokuGrid.map((row, rowIndex) => {
-      const values = row.map((cell) => cell.value);
-      const duplicates = values.filter(
-        (value, index) => values.indexOf(value) !== index
-      ); // 중복되는 value 를 반환
-
-      row = row.map((cell) => {
-        if (cell.value in duplicates) {
-          return { ...cell, duplicate: true };
-        }
-        return cell;
-      });
-    });
+  const handleRemoveButton = () => {
+    if (targetCell !== null && !targetCell.fixed)
+      remove(targetCell.row, targetCell.col);
+    else setOnRemove((prevOnRemove) => !prevOnRemove);
   };
-
-  const handleNumberBarClick = (number: number) => {
-    setCellSelected(initialCellSelection); // 셀이 선택된 상태였다면 초기화.
-    setActiveNum(number); // 현재 클릭한 숫자 "쓰기 모드" 활성화
+  const handleNumberBarClick = (num: number) => {
+    setOnRemove(false);
+    if (!targetCell) setInputNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
+    else {
+      const { row, col, fixed } = targetCell;
+      if (fixed) {
+        setTargetCell(null);
+        setInputNum(num);
+      } else updateGrid(row, col, num);
+    }
   };
 
   const cellClassName = (
     cell: SudokuCell,
     colIndex: number,
     rowIndex: number,
-    activeNum: number,
-    cellSelected: Record<string, number>
+    activeNum: number | null,
+    cellSelected: SudokuCell | null
   ) => {
+    const { row, col, value, subgrid, duplicated } = cell;
+
     return classNames(
       "w-8 h-8 sm:w-10 sm:h-10 border text-center text-xl cursor-pointer ",
       {
         "border-r-4": colIndex === 2 || colIndex === 5,
         "border-b-4": rowIndex === 2 || rowIndex === 5,
-        "bg-pink-600": cell.value == activeNum,
-        "bg-slate-950": cell.value != activeNum,
+        "bg-pink-600": value == activeNum,
+        "bg-slate-950": value != activeNum,
         "border-pink-300 border-4":
-          cell.row == cellSelected.row && cell.col == cellSelected.col,
+          row == cellSelected?.row && col == cellSelected.col,
         "bg-pink-900":
-          cellSelected.row == cell.row ||
-          cellSelected.col == cell.col ||
-          cell.subgrid == cellSelected.grid,
-        "text-pink-400": cell.value == cellSelected.value,
-        "text-yellow-200": cell.duplicate,
+          cellSelected?.row == row ||
+          cellSelected?.col == col ||
+          cellSelected?.subgrid == subgrid,
+        "text-pink-400": value == cellSelected?.value,
+        "text-yellow-200": duplicated,
       }
     );
   };
@@ -194,8 +217,15 @@ export default function Home() {
         <p>Welcome !</p>
         {/* Toolbar */}
         <div className="flex w-full ">
-          <VscDebugRestart />
-          <MdUndo />
+          <button
+            className="border rounded bg-purple-300"
+            onClick={handleResetBtn}
+          >
+            <VscDebugRestart className="w-8 h-8 " />
+          </button>
+          <button className="border rounded bg-green-300" onClick={undo}>
+            <MdUndo className="w-8 h-8 " />
+          </button>
         </div>
         <div className="grid ">
           {sudokuGrid.map((row, rowIndex) => (
@@ -206,8 +236,8 @@ export default function Home() {
                   className="relative"
                   onClick={() => cellClickEvent(cell)}
                 >
-                  {cell.duplicate && !cell.fix && (
-                    <IoCloseOutline className="absolute w-8 h-8 text-red-500" />
+                  {cell.duplicated && !cell.fixed && (
+                    <IoCloseOutline className="absolute w-8 h-8 text-red-500 sm:w-10 sm:h-10" />
                   )}
 
                   <input
@@ -216,10 +246,10 @@ export default function Home() {
                       cell,
                       colIndex,
                       rowIndex,
-                      activeNum,
-                      cellSelected
+                      inputNum,
+                      targetCell
                     )}
-                    value={cell.value != 0 ? cell.value : ""}
+                    value={cell.value > 0 ? cell.value : ""}
                     readOnly
                   />
                 </div>
@@ -229,13 +259,25 @@ export default function Home() {
         </div>
         {/* Number Bar*/}
         <div className="flex gap-0.5">
+          <label className="inline-flex items-center me-5 cursor-pointer">
+            <input
+              type="checkbox"
+              value=""
+              className="sr-only peer"
+              onChange={(e) => console.log(e.target.checked)}
+            />
+            <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-500"></div>
+            <span className="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
+              Orange
+            </span>
+          </label>
           {Array(9)
             .fill(null)
             .map((_: any, index: number) => (
               <button
                 key={index}
                 className={`w-auto h-auto px-2 text-center text-white text-2xl border ${
-                  activeNum === index + 1 ? "bg-pink-600" : ""
+                  inputNum === index + 1 ? "bg-pink-600" : ""
                 }`}
                 onClick={() => handleNumberBarClick(index + 1)}
               >
@@ -243,7 +285,22 @@ export default function Home() {
               </button>
             ))}
         </div>
+        <div className="flex w-full">
+          <button className="border rounded bg-green-300">
+            <TfiPencilAlt className="w-8 h-8 " />
+          </button>
+          <button
+            className={`border rounded  ${
+              onRemove ? "bg-green-300" : "bg-gray-300"
+            }`}
+            onClick={handleRemoveButton}
+          >
+            <TfiEraser className="w-8 h-8 " />
+          </button>
+        </div>
       </div>
+      {/* reset modal */}
+      {showResetModal && <ResetModal {...{ setShowResetModal, reset }} />}
     </main>
   );
 }
