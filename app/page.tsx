@@ -57,6 +57,7 @@ export default function Home() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [inputNum, setInputNum] = useState<number | null>(null);
   const [onRemove, setOnRemove] = useState(false);
+  const [onMemo, setOnMemo] = useState(false);
 
   const [targetCell, setTargetCell] = useState<SudokuCell | null>(null);
   const historyRef = useRef<SudokuGrid[]>([]); // 그리드 기록을 저장해둠
@@ -239,7 +240,15 @@ export default function Home() {
                   {cell.duplicated && !cell.fixed && (
                     <IoCloseOutline className="absolute w-8 h-8 text-red-500 sm:w-10 sm:h-10" />
                   )}
-
+                  {onMemo && (
+                    <div className="grid grid-cols-3 absolute w-8 h-8 text-gray-300 sm:w-10 sm:h-10">
+                      {Array(9)
+                        .fill(0)
+                        .map((_: any, index: number) => (
+                          <p>{index}</p>
+                        ))}
+                    </div>
+                  )}
                   <input
                     type="text"
                     className={cellClassName(
@@ -286,7 +295,12 @@ export default function Home() {
             ))}
         </div>
         <div className="flex w-full">
-          <button className="border rounded bg-green-300">
+          <button
+            className={`border rounded  ${
+              onMemo ? "bg-green-300" : "bg-gray-300"
+            }`}
+            onClick={() => setOnMemo(!onMemo)}
+          >
             <TfiPencilAlt className="w-8 h-8 " />
           </button>
           <button
