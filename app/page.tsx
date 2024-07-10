@@ -1,12 +1,11 @@
 "use client";
 import { useRef, useState } from "react";
-import { IoCloseOutline } from "react-icons/io5";
 import { VscDebugRestart } from "react-icons/vsc";
 import { MdUndo } from "react-icons/md";
 import { TfiPencilAlt, TfiEraser } from "react-icons/tfi";
-import classNames from "classnames";
 import _ from "lodash";
 import ResetModal from "./components/ResetModal";
+import SudokuCell from "./components/Cell";
 
 const example2 = [
   [0, 3, 0, 0, 6, 2, 0, 7, 0],
@@ -20,13 +19,14 @@ const example2 = [
   [0, 0, 8, 2, 9, 0, 0, 6, 4],
 ];
 
-type SudokuCell = {
-  row: number;
-  col: number;
-  value: number;
-  subgrid: number;
-  fixed: boolean;
-  duplicated: boolean;
+export type SudokuCell = {
+  row: number; // 행
+  col: number; // 열
+  value: number; // 값
+  subgrid: number; // 0~8 중 속한 그리드
+  fixed: boolean; // 고정값 여부
+  duplicated: boolean; // 중복 여부
+  memo: Set<number>;
 };
 
 type SudokuGrid = SudokuCell[][];
@@ -45,6 +45,7 @@ const generateEmptyGrid = (): SudokuGrid => {
         subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
         fixed: value != 0,
         duplicated: false,
+        memo: new Set<number>(),
       });
     }
     grid.push(currentRow);
@@ -59,7 +60,7 @@ export default function Home() {
   const [onRemove, setOnRemove] = useState(false);
   const [onMemo, setOnMemo] = useState(false);
 
-  const [targetCell, setTargetCell] = useState<SudokuCell | null>(null);
+  const [targetCell, setTargetCell] = useState<SudokuCell | null>(null); // 포커스된 셀
   const historyRef = useRef<SudokuGrid[]>([]); // 그리드 기록을 저장해둠
   const handleResetBtn = () => {
     setShowResetModal(true);
@@ -80,7 +81,8 @@ export default function Home() {
   const cellClickEvent = (cell: SudokuCell) => {
     //셀 클릭 이벤트
     const { row, col, fixed, value } = cell;
-    setTargetCell(cell);
+    if (onMemo && fixed) return;
+    if (!onMemo) setTargetCell(cell);
 
     if (onRemove) {
       // "제거 모드인 경우"
@@ -100,31 +102,41 @@ export default function Home() {
       remove(row, col);
     } else {
       // 고정값이 아닌 경우, 새로운 값 입력
-      updateGrid(row, col, inputNum);
+      updateGrid(cell, inputNum);
     }
   };
 
-  const updateGrid = (row: number, col: number, newValue: number) => {
+  const updateGrid = (cell: SudokuCell, newValue: number) => {
     //셀 값 변경
+    const { row, col, memo } = cell;
+
     historyRef.current.push(_.cloneDeep(sudokuGrid));
 
     setSudokuGrid((prevGrid) => {
       const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
-      newGrid[row][col] = {
-        ...newGrid[row][col],
-        value: newValue,
-      };
 
-      const duplicateCells: SudokuCell[] = checkDuplicates(
-        newGrid,
-        row,
-        col,
-        newValue
-      );
+      if (onMemo) {
+        // 메모 모드일경우
+        newGrid[row][col] = {
+          ...newGrid[row][col],
+          memo: memo.add(newValue),
+        };
+      } else {
+        newGrid[row][col] = {
+          ...newGrid[row][col],
+          value: newValue,
+        };
+        const duplicateCells: SudokuCell[] = checkDuplicates(
+          newGrid,
+          row,
+          col,
+          newValue
+        );
 
-      duplicateCells.map(({ row, col }) => {
-        newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
-      });
+        duplicateCells.map(({ row, col }) => {
+          newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
+        });
+      }
 
       return newGrid;
     });
@@ -176,40 +188,11 @@ export default function Home() {
     setOnRemove(false);
     if (!targetCell) setInputNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
     else {
-      const { row, col, fixed } = targetCell;
-      if (fixed) {
+      if (targetCell.fixed) {
         setTargetCell(null);
         setInputNum(num);
-      } else updateGrid(row, col, num);
+      } else updateGrid(targetCell, num);
     }
-  };
-
-  const cellClassName = (
-    cell: SudokuCell,
-    colIndex: number,
-    rowIndex: number,
-    activeNum: number | null,
-    cellSelected: SudokuCell | null
-  ) => {
-    const { row, col, value, subgrid, duplicated } = cell;
-
-    return classNames(
-      "w-8 h-8 sm:w-10 sm:h-10 border text-center text-xl cursor-pointer ",
-      {
-        "border-r-4": colIndex === 2 || colIndex === 5,
-        "border-b-4": rowIndex === 2 || rowIndex === 5,
-        "bg-pink-600": value == activeNum,
-        "bg-slate-950": value != activeNum,
-        "border-pink-300 border-4":
-          row == cellSelected?.row && col == cellSelected.col,
-        "bg-pink-900":
-          cellSelected?.row == row ||
-          cellSelected?.col == col ||
-          cellSelected?.subgrid == subgrid,
-        "text-pink-400": value == cellSelected?.value,
-        "text-yellow-200": duplicated,
-      }
-    );
   };
 
   return (
@@ -232,36 +215,18 @@ export default function Home() {
           {sudokuGrid.map((row, rowIndex) => (
             <div key={rowIndex} className="grid grid-cols-9 ">
               {row.map((cell, colIndex) => (
-                <div
+                <SudokuCell
                   key={colIndex}
-                  className="relative"
-                  onClick={() => cellClickEvent(cell)}
-                >
-                  {cell.duplicated && !cell.fixed && (
-                    <IoCloseOutline className="absolute w-8 h-8 text-red-500 sm:w-10 sm:h-10" />
-                  )}
-                  {onMemo && (
-                    <div className="grid grid-cols-3 absolute w-8 h-8 text-gray-300 sm:w-10 sm:h-10">
-                      {Array(9)
-                        .fill(0)
-                        .map((_: any, index: number) => (
-                          <p>{index}</p>
-                        ))}
-                    </div>
-                  )}
-                  <input
-                    type="text"
-                    className={cellClassName(
-                      cell,
-                      colIndex,
-                      rowIndex,
-                      inputNum,
-                      targetCell
-                    )}
-                    value={cell.value > 0 ? cell.value : ""}
-                    readOnly
-                  />
-                </div>
+                  {...{
+                    rowIndex,
+                    colIndex,
+                    cell,
+                    cellClickEvent,
+                    onMemo,
+                    inputNum,
+                    targetCell,
+                  }}
+                />
               ))}
             </div>
           ))}
