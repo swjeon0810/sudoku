@@ -10,7 +10,7 @@ type CellType = {
   cellClickEvent: any;
   onMemo: boolean;
   inputNum: number | null;
-  targetCell: SudokuCell | null;
+  focusCell: { row: number; col: number; value: number; subgrid: number };
 };
 export default function Cell({
   rowIndex,
@@ -19,7 +19,7 @@ export default function Cell({
   cellClickEvent,
   onMemo,
   inputNum,
-  targetCell,
+  focusCell,
 }: CellType) {
   const { row, col, value, subgrid, duplicated, memo } = cell;
   const cellClassName = () => {
@@ -30,15 +30,15 @@ export default function Cell({
         "bg-pink-700": inputNum && memo.has(inputNum),
         "bg-slate-950": value !== inputNum && !(inputNum && memo.has(inputNum)),
         "bg-pink-900":
-          targetCell?.row === row ||
-          targetCell?.col === col ||
-          targetCell?.subgrid === subgrid,
+          focusCell?.row === row ||
+          focusCell?.col === col ||
+          focusCell?.subgrid === subgrid,
         "border-r-4": colIndex === 2 || colIndex === 5,
         "border-b-4": rowIndex === 2 || rowIndex === 5,
         "border-pink-300 border-4":
-          row == targetCell?.row && col == targetCell.col,
+          row == focusCell?.row && col == focusCell.col,
 
-        "text-pink-400": value === targetCell?.value,
+        "text-pink-400": value === focusCell?.value,
         "text-yellow-200": duplicated,
         "text-white text-opacity-60": onMemo,
       }

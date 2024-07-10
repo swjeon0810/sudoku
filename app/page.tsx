@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { VscDebugRestart } from "react-icons/vsc";
-import { MdUndo } from "react-icons/md";
+import { MdUndo, MdDarkMode, MdSunny } from "react-icons/md";
 import { TfiPencilAlt, TfiEraser } from "react-icons/tfi";
 import _ from "lodash";
 import ResetModal from "./components/ResetModal";
@@ -26,7 +26,7 @@ export type SudokuCell = {
   subgrid: number; // 0~8 중 속한 그리드
   fixed: boolean; // 고정값 여부
   duplicated: boolean; // 중복 여부
-  memo: Set<number>;
+  memo: Set<number>; // 메모
 };
 
 type SudokuGrid = SudokuCell[][];
@@ -54,54 +54,58 @@ const generateEmptyGrid = (): SudokuGrid => {
 };
 
 export default function Home() {
+  const [dark, setDark] = useState(false);
   const [sudokuGrid, setSudokuGrid] = useState<SudokuGrid>(generateEmptyGrid());
   const [showResetModal, setShowResetModal] = useState(false);
   const [inputNum, setInputNum] = useState<number | null>(null);
   const [onRemove, setOnRemove] = useState(false);
   const [onMemo, setOnMemo] = useState(false);
-
-  const [targetCell, setTargetCell] = useState<SudokuCell | null>(null); // 포커스된 셀
+  const initFocusCell = { row: -1, col: -1, value: -1, subgrid: -1 };
+  const [focusCell, setFocusCell] = useState(initFocusCell); // 포커스된 셀
   const historyRef = useRef<SudokuGrid[]>([]); // 그리드 기록을 저장해둠
   const handleResetBtn = () => {
     setShowResetModal(true);
   };
   const reset = () => {
     // 다시 시작 이벤트
-    setTargetCell(null); // 셀 선택 해제
+    setFocusCell(initFocusCell); // 셀 선택 해제
     setInputNum(null);
     setSudokuGrid(generateEmptyGrid());
     historyRef.current = [];
   };
   const undo = () => {
     // 실행 취소 이벤트
-    setTargetCell(null); // 셀 선택 해제
+    setFocusCell(initFocusCell); // 셀 선택 해제
     const lastest = historyRef.current.pop();
     lastest != undefined && setSudokuGrid(lastest);
   };
   const cellClickEvent = (cell: SudokuCell) => {
     //셀 클릭 이벤트
     const { row, col, fixed, value } = cell;
-    if (onMemo && fixed) return;
-    if (!onMemo) setTargetCell(cell);
+
+    if (fixed) {
+      if (onMemo || onRemove) return;
+      else {
+        setInputNum(-1);
+        return;
+      }
+    }
+
+    setFocusCell(cell);
 
     if (onRemove) {
       // "제거 모드인 경우"
-      !fixed && remove(row, col);
+      remove(row, col);
       return;
     }
 
-    if (fixed) {
-      //고정값인 경우
-      setInputNum(-1);
-      return;
-    }
     if (inputNum === null) return;
 
     if (inputNum === value) {
       // 똑같은 값이 들어가있는 경우 지우기
       remove(row, col);
     } else {
-      // 고정값이 아닌 경우, 새로운 값 입력
+      // 새로운 값 입력
       updateGrid(cell, inputNum);
     }
   };
@@ -116,17 +120,19 @@ export default function Home() {
       const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
 
       if (onMemo) {
-        // 메모 모드일경우
+        // 메모 모드일경우 메모에 숫자 추가
         newGrid[row][col] = {
           ...newGrid[row][col],
           memo: memo.add(newValue),
         };
       } else {
+        // 메모 모드 아닐 경우 값 입력
         newGrid[row][col] = {
           ...newGrid[row][col],
           value: newValue,
         };
-        const duplicateCells: SudokuCell[] = checkDuplicates(
+        //입력한 값 유효성 검사. 연관 그리드에 중복된 값이 있는지 체크.
+        const duplicateCells: SudokuCell[] = checkDuplicateCell(
           newGrid,
           row,
           col,
@@ -136,11 +142,25 @@ export default function Home() {
         duplicateCells.map(({ row, col }) => {
           newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
         });
+
+        // 연관 그리드 메모에서 해당 값을 지운다.
+        const duplicateCellsMemo: SudokuCell[] = checkDuplicateMemo(
+          newGrid,
+          row,
+          col,
+          newValue
+        );
+
+        duplicateCellsMemo.map(({ row, col, memo }) => {
+          memo.delete(newValue);
+          newGrid[row][col] = { ...newGrid[row][col], memo };
+        });
       }
 
       return newGrid;
     });
   };
+
   const remove = (row: number, col: number) => {
     // 숫자 지우기
     setSudokuGrid((prevGrid) => {
@@ -154,7 +174,32 @@ export default function Home() {
       return newGrid;
     });
   };
-  const checkDuplicates = (
+  const checkDuplicateMemo = (
+    newGrid: SudokuGrid,
+    row: number,
+    col: number,
+    targetNum: number
+  ) => {
+    // 셀에 숫자를 입력할 때 연관 그리드 메모 중 중복값이 있는 지 체크한다.
+    const duplicateInRow = newGrid[row].filter((c) => c.memo.has(targetNum));
+    const cellsInCol = newGrid.map((row) => row[col]);
+    const duplicateInCol = cellsInCol.filter((c) => c.memo.has(targetNum));
+    const subgridRowStart = Math.floor(row / 3) * 3;
+    const subgridColStart = Math.floor(col / 3) * 3;
+    const duplicateInSubgrid = [];
+    for (let r = subgridRowStart; r < subgridRowStart + 3; r++) {
+      for (let c = subgridColStart; c < subgridColStart + 3; c++) {
+        newGrid[r][c].memo.has(targetNum) &&
+          duplicateInSubgrid.push(newGrid[r][c]);
+      }
+    }
+    const allDuplicateCellsMemo = [
+      ...new Set([...duplicateInRow, ...duplicateInCol, ...duplicateInSubgrid]),
+    ];
+
+    return allDuplicateCellsMemo;
+  };
+  const checkDuplicateCell = (
     newGrid: SudokuGrid,
     row: number,
     col: number,
@@ -179,20 +224,14 @@ export default function Home() {
 
     return allDuplicateCells;
   };
-  const handleRemoveButton = () => {
-    if (targetCell !== null && !targetCell.fixed)
-      remove(targetCell.row, targetCell.col);
-    else setOnRemove((prevOnRemove) => !prevOnRemove);
-  };
+  // const handleRemoveButton = () => {
+  //   if (focusCell !== null && !targetCell.fixed)
+  //     remove(targetCell.row, targetCell.col);
+  //   else setOnRemove((prevOnRemove) => !prevOnRemove);
+  // };
   const handleNumberBarClick = (num: number) => {
     setOnRemove(false);
-    if (!targetCell) setInputNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
-    else {
-      if (targetCell.fixed) {
-        setTargetCell(null);
-        setInputNum(num);
-      } else updateGrid(targetCell, num);
-    }
+    setInputNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
   };
 
   return (
@@ -201,15 +240,29 @@ export default function Home() {
         <p>Welcome !</p>
         {/* Toolbar */}
         <div className="flex w-full ">
+          {/* 다시 시작 버튼 */}
           <button
             className="border rounded bg-purple-300"
             onClick={handleResetBtn}
           >
             <VscDebugRestart className="w-8 h-8 " />
           </button>
+          {/* 실행취소 버튼*/}
           <button className="border rounded bg-green-300" onClick={undo}>
             <MdUndo className="w-8 h-8 " />
           </button>
+          {/* 다크모드 토글*/}
+          <label className="inline-flex items-center me-5 cursor-pointer">
+            <MdSunny />
+            <input
+              type="checkbox"
+              value=""
+              className="sr-only peer"
+              onChange={(e) => setDark(e.target.checked)}
+            />
+            <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-500"></div>
+            <MdDarkMode />
+          </label>
         </div>
         <div className="grid ">
           {sudokuGrid.map((row, rowIndex) => (
@@ -224,7 +277,7 @@ export default function Home() {
                     cellClickEvent,
                     onMemo,
                     inputNum,
-                    targetCell,
+                    focusCell,
                   }}
                 />
               ))}
@@ -233,18 +286,6 @@ export default function Home() {
         </div>
         {/* Number Bar*/}
         <div className="flex gap-0.5">
-          <label className="inline-flex items-center me-5 cursor-pointer">
-            <input
-              type="checkbox"
-              value=""
-              className="sr-only peer"
-              onChange={(e) => console.log(e.target.checked)}
-            />
-            <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-500"></div>
-            <span className="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">
-              Orange
-            </span>
-          </label>
           {Array(9)
             .fill(null)
             .map((_: any, index: number) => (
@@ -272,7 +313,7 @@ export default function Home() {
             className={`border rounded  ${
               onRemove ? "bg-green-300" : "bg-gray-300"
             }`}
-            onClick={handleRemoveButton}
+            onClick={() => setOnRemove((prevOnRemove) => !prevOnRemove)}
           >
             <TfiEraser className="w-8 h-8 " />
           </button>
