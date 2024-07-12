@@ -57,6 +57,7 @@ export default function Cell({
           .fill(0)
           .map((_: any, index: number) => (
             <p
+              key={index}
               className={`text-[9px] p-0 m-0 ${
                 onMemo ? "text-red-200" : "text-white text-opacity-50"
               }`}

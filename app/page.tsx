@@ -43,7 +43,7 @@ const generateEmptyGrid = (): SudokuGrid => {
         col,
         value,
         subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
-        fixed: value != 0,
+        fixed: value !== 0,
         duplicated: false,
         memo: new Set<number>(),
       });
@@ -63,6 +63,8 @@ export default function Home() {
   const initFocusCell = { row: -1, col: -1, value: -1, subgrid: -1 };
   const [focusCell, setFocusCell] = useState(initFocusCell); // 포커스된 셀
   const historyRef = useRef<SudokuGrid[]>([]); // 그리드 기록을 저장해둠
+  const [finishedNum, setFinishedNum] = useState<Set<number>>(new Set());
+
   const handleResetBtn = () => {
     setShowResetModal(true);
   };
@@ -109,10 +111,9 @@ export default function Home() {
       updateGrid(cell, inputNum);
     }
   };
-
   const updateGrid = (cell: SudokuCell, newValue: number) => {
     //셀 값 변경
-    const { row, col, memo } = cell;
+    const { row, col, value, memo } = cell;
 
     historyRef.current.push(_.cloneDeep(sudokuGrid));
 
@@ -120,17 +121,28 @@ export default function Home() {
       const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
 
       if (onMemo) {
-        // 메모 모드일경우 메모에 숫자 추가
-        newGrid[row][col] = {
-          ...newGrid[row][col],
-          memo: memo.add(newValue),
-        };
+        // 메모 모드일경우
+        if (memo.has(newValue)) {
+          memo.delete(newValue);
+          //메모에서 숫자 제거
+          newGrid[row][col] = {
+            ...newGrid[row][col],
+            memo: memo,
+          };
+        } else {
+          //메모에 숫자 추가
+          newGrid[row][col] = {
+            ...newGrid[row][col],
+            memo: memo.add(newValue),
+          };
+        }
       } else {
-        // 메모 모드 아닐 경우 값 입력
+        // 메모 모드 아닐 경우
         newGrid[row][col] = {
           ...newGrid[row][col],
           value: newValue,
         };
+
         //입력한 값 유효성 검사. 연관 그리드에 중복된 값이 있는지 체크.
         const duplicateCells: SudokuCell[] = checkDuplicateCell(
           newGrid,
@@ -139,9 +151,13 @@ export default function Home() {
           newValue
         );
 
-        duplicateCells.map(({ row, col }) => {
-          newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
-        });
+        if (duplicateCells.length > 1) {
+          // 중복되는 셀이 하나인 경우는 자기 자신이므로 넘긴다.
+          // 여러 개인 경우 duplicated 표시함.
+          duplicateCells.map(({ row, col }) => {
+            newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
+          });
+        }
 
         // 연관 그리드 메모에서 해당 값을 지운다.
         const duplicateCellsMemo: SudokuCell[] = checkDuplicateMemo(
@@ -156,24 +172,43 @@ export default function Home() {
           newGrid[row][col] = { ...newGrid[row][col], memo };
         });
       }
-
+      const countOfInputNum = countNumber(newGrid, newValue);
+      if (countOfInputNum >= 9) setFinishedNum((prev) => prev.add(newValue));
+      console.log(`finishedNum : ${finishedNum}`);
       return newGrid;
     });
+
+    // 입력한 값의 개수가 9 이상일 경우.
   };
 
   const remove = (row: number, col: number) => {
     // 숫자 지우기
-    setSudokuGrid((prevGrid) => {
-      const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
-      newGrid[row][col] = {
-        ...newGrid[row][col],
-        value: -1,
-        duplicated: false,
-      };
+    if (onMemo) {
+      setSudokuGrid((prevGrid) => {
+        const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
+        const newMemo = newGrid[row][col].memo;
+        inputNum && newMemo.delete(inputNum);
+        newGrid[row][col] = {
+          ...newGrid[row][col],
+          memo: newMemo,
+        };
 
-      return newGrid;
-    });
+        return newGrid;
+      });
+    } else {
+      setSudokuGrid((prevGrid) => {
+        const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
+        newGrid[row][col] = {
+          ...newGrid[row][col],
+          value: -1,
+          duplicated: false,
+        };
+
+        return newGrid;
+      });
+    }
   };
+
   const checkDuplicateMemo = (
     newGrid: SudokuGrid,
     row: number,
@@ -221,14 +256,21 @@ export default function Home() {
     const allDuplicateCells = [
       ...new Set([...duplicateInRow, ...duplicateInCol, ...duplicateInSubgrid]),
     ];
-
+    console.log(allDuplicateCells);
     return allDuplicateCells;
   };
-  // const handleRemoveButton = () => {
-  //   if (focusCell !== null && !targetCell.fixed)
-  //     remove(targetCell.row, targetCell.col);
-  //   else setOnRemove((prevOnRemove) => !prevOnRemove);
-  // };
+  const countNumber = (newGrid: SudokuGrid, num: number) => {
+    //숫자를 입력할 때마다 해당 숫자가 그리드에 몇개 들어가 있는지 카운트한다.
+    // 9개가 들어가 있으면 number Panel에서 비활성화 시킴.
+    let cnt = 0;
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (newGrid[i][j].value === num) cnt++;
+      }
+    }
+    console.log(`num: ${num} count: ${cnt}`);
+    return cnt;
+  };
   const handleNumberBarClick = (num: number) => {
     setOnRemove(false);
     setInputNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
@@ -293,8 +335,12 @@ export default function Home() {
                 key={index}
                 className={`w-auto h-auto px-2 text-center text-white text-2xl border ${
                   inputNum === index + 1 ? "bg-pink-600" : ""
-                }`}
-                onClick={() => handleNumberBarClick(index + 1)}
+                } 
+              ${finishedNum.has(index + 1) ? " bg-gray-500 " : ""}`}
+                onClick={() => {
+                  handleNumberBarClick(index + 1);
+                }}
+                disabled={finishedNum.has(index + 1)}
               >
                 {index + 1}
               </button>
@@ -313,7 +359,9 @@ export default function Home() {
             className={`border rounded  ${
               onRemove ? "bg-green-300" : "bg-gray-300"
             }`}
-            onClick={() => setOnRemove((prevOnRemove) => !prevOnRemove)}
+            onClick={() => {
+              setOnRemove((prevOnRemove) => !prevOnRemove);
+            }}
           >
             <TfiEraser className="w-8 h-8 " />
           </button>
