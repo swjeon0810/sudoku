@@ -1,8 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { VscDebugRestart } from "react-icons/vsc";
-import { MdUndo, MdDarkMode, MdSunny } from "react-icons/md";
-import { TfiPencilAlt, TfiEraser } from "react-icons/tfi";
+import {
+  MdUndo,
+  MdDarkMode,
+  MdSunny,
+  MdEdit,
+  MdEditOff,
+  MdDelete,
+  MdClose,
+} from "react-icons/md";
 import _ from "lodash";
 import ResetModal from "./components/ResetModal";
 import Cell from "./components/Cell";
@@ -140,11 +147,8 @@ export default function Home() {
         }
 
         // 해당 숫자가 9개 이상 입력된 경우 더이상 입력하지 못하도록 비활성화.
-        const countOfInputNum = countNumber(newGrid, inputNum);
-        if (countOfInputNum >= 9) setFinishedNum((prev) => prev.add(inputNum));
-        console.log(`finishedNum : ${finishedNum}`);
+        checkFinished(newGrid);
 
-        //
         validate(newGrid);
 
         return newGrid;
@@ -189,30 +193,40 @@ export default function Home() {
           memo: newMemo,
         };
       } else {
-        // 메모모드 아닌경우, 해당 값을 지우기
+        // 메모모드 아닌경우, 해당 셀을 비우기
 
         newGrid[row][col] = {
           ...newGrid[row][col],
           value: -1,
           duplicated: false,
         };
+
+        if (inputNum) {
+          checkFinished(newGrid);
+        }
       }
 
       return newGrid;
     });
   };
 
-  const countNumber = (newGrid: SudokuGrid, num: number) => {
-    //숫자를 입력할 때마다 해당 숫자가 그리드에 몇개 들어가 있는지 카운트한다.
-    // 9개가 들어가 있으면 number Panel에서 비활성화 시킴.
-    let cnt = 0;
-    for (let i = 0; i < 9; i++) {
-      for (let j = 0; j < 9; j++) {
-        if (newGrid[i][j].value === num) cnt++;
+  const checkFinished = (newGrid: SudokuGrid) => {
+    // 전체 그리드를 스캔하여 각 숫자 별 소진된 개수 카운트
+    // 9개 이상일 경우 finished 리스트에 추가한 후 상태 업데이트.
+    // number Panel에서 해당 숫자들을 비활성화하기 위함.
+
+    const finishedList: Set<number> = new Set();
+    for (let num = 1; num < 10; num++) {
+      let cnt = 0;
+      for (let i = 0; i < 9; i++) {
+        for (let j = 0; j < 9; j++) {
+          if (newGrid[i][j].value === num) cnt++;
+        }
       }
+      cnt >= 9 && finishedList.add(num);
     }
-    console.log(`num: ${num} count: ${cnt}`);
-    return cnt;
+
+    setFinishedNum(finishedList);
   };
   const handleNumberBarClick = (num: number) => {
     setInputNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
@@ -220,34 +234,36 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-white dark:bg-slate-950">
-      <div className="flex flex-col z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex border gap-5 py-10">
+    <main className="flex min-h-screen flex-col items-center justify-between p-24 dark:bg-slate-900 dark:text-white">
+      <div className="flex flex-col z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex gap-5 pt-3">
+        {/* 다크모드 토글*/}
+
+        <label className="w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
+          {darkMode ? (
+            <MdDarkMode className="text-black dark:text-white" />
+          ) : (
+            <MdSunny className="text-black dark:text-white" />
+          )}
+
+          <input
+            type="checkbox"
+            value=""
+            className="sr-only peer"
+            onChange={toggleDarkMode}
+          />
+          <div className="relative w-11 h-6 bg-gray-600 rounded-full dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
+        </label>
         <p>Welcome !</p>
         {/* Toolbar */}
-        <div className="flex w-full ">
+        <div className="flex w-full justify-center space-x-1">
           {/* 다시 시작 버튼 */}
-          <button
-            className="border rounded bg-purple-300"
-            onClick={handleResetBtn}
-          >
-            <VscDebugRestart className="w-8 h-8 " />
+          <button className="btn" onClick={handleResetBtn}>
+            <VscDebugRestart className="w-full h-full" />
           </button>
           {/* 실행취소 버튼*/}
-          <button className="border rounded bg-green-300" onClick={undo}>
-            <MdUndo className="w-8 h-8 " />
+          <button className="btn" onClick={undo}>
+            <MdUndo className="w-full h-full" />
           </button>
-          {/* 다크모드 토글*/}
-          <label className="inline-flex items-center me-5 cursor-pointer">
-            <MdSunny className="text-black dark:text-white mx-1" />
-            <input
-              type="checkbox"
-              value=""
-              className="sr-only peer"
-              onChange={toggleDarkMode}
-            />
-            <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-500"></div>
-            <MdDarkMode className="text-black dark:text-white mx-1" />
-          </label>
         </div>
         <div className="grid ">
           {sudokuGrid.map((row, rowIndex) => (
@@ -269,6 +285,28 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <div className="flex w-full justify-center space-x-1">
+          <button
+            className={`btn relative ${onMemo && "bg-white"}`}
+            onClick={() => setOnMemo(!onMemo)}
+          >
+            {onMemo && (
+              <MdClose className="top-0 left-0 w-full h-full absolute text-red-500" />
+            )}
+            <MdEdit className="w-full h-full" />
+          </button>
+          <button
+            className={`btn relative ${onRemove && "bg-white"}`}
+            onClick={() => {
+              setOnRemove((prevOnRemove) => !prevOnRemove);
+            }}
+          >
+            {onRemove && (
+              <MdClose className="top-0 left-0 w-full h-full absolute text-red-500" />
+            )}
+            <MdDelete className="w-full h-full" />
+          </button>
+        </div>
         {/* Number Bar*/}
         <div className="flex gap-0.5">
           {Array(9)
@@ -276,15 +314,15 @@ export default function Home() {
             .map((_: any, index: number) => (
               <button
                 key={index}
-                className={`w-auto h-auto px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-500 ${
+                className={`w-auto h-auto px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
                   inputNum === index + 1
-                    ? " bg-orange-600 dark:bg-orange-400 "
+                    ? " bg-black text-white dark:bg-white dark:text-black"
                     : ""
                 } 
               ${
                 finishedNum.has(index + 1)
                   ? " bg-gray-500 dark:bg-gray-400"
-                  : ""
+                  : " hover:bg-slate-100 hover:text-black dark:hover:bg-slate-100 dark:hover:text-black"
               }`}
                 onClick={() => {
                   handleNumberBarClick(index + 1);
@@ -294,26 +332,6 @@ export default function Home() {
                 {index + 1}
               </button>
             ))}
-        </div>
-        <div className="flex w-full">
-          <button
-            className={`border rounded  ${
-              onMemo ? "bg-green-300" : "bg-gray-300"
-            }`}
-            onClick={() => setOnMemo(!onMemo)}
-          >
-            <TfiPencilAlt className="w-8 h-8 " />
-          </button>
-          <button
-            className={`border rounded  ${
-              onRemove ? "bg-green-300" : "bg-gray-300"
-            }`}
-            onClick={() => {
-              setOnRemove((prevOnRemove) => !prevOnRemove);
-            }}
-          >
-            <TfiEraser className="w-8 h-8 " />
-          </button>
         </div>
       </div>
       {/* reset modal */}

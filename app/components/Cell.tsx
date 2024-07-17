@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React from "react";
 import { IoCloseOutline } from "react-icons/io5";
 import { SudokuCell } from "../lib/type";
 
@@ -20,7 +20,7 @@ export default function Cell({
   inputNum,
   focusCell,
 }: CellType) {
-  const { row, col, value, subgrid, duplicated, memo } = cell;
+  const { row, col, value, subgrid, fixed, memo } = cell;
 
   return (
     <div className="relative" onClick={() => cellClickEvent(cell)}>
@@ -35,8 +35,10 @@ export default function Cell({
           .map((_: any, index: number) => (
             <p
               key={index}
-              className={`text-[9px] p-0 m-0 ${
-                onMemo ? "text-red-200" : "text-white text-opacity-50"
+              className={`text-[9px] p-0 m-0 font-black ${
+                onMemo
+                  ? " text-black dark:text-white "
+                  : " text-black text-opacity-50"
               }`}
             >
               {memo.has(index + 1) && index + 1}
@@ -46,28 +48,28 @@ export default function Cell({
       {/* 숫자 */}
       <input
         type="text"
-        className={`font-bold w-8 h-8 sm:w-10 sm:h-10 border border-black dark:border-gray-300 text-center text-xl cursor-pointer ${
+        className={` w-8 h-8 sm:w-10 sm:h-10 border font-black border-white bg-opacity-50 dark:bg-opacity-50 dark:border-blue-100 text-center text-3xl sm:text-4xl cursor-pointer ${
           (colIndex === 2 || colIndex === 5) && " border-r-4 "
         } ${(rowIndex === 2 || rowIndex === 5) && " border-b-4 "}
-        
+          ${fixed ? " text-black " : " text-blue-500 "}
           ${
             value === inputNum ||
             (row == focusCell?.row && col == focusCell.col) ||
             (inputNum && memo.has(inputNum))
-              ? " bg-orange-600 "
+              ? " bg-blue-400 dark:bg-blue-600 "
               : row === focusCell?.row ||
                 col === focusCell?.col ||
                 subgrid === focusCell?.subgrid
-              ? " bg-orange-100 dark:bg-orange-700 "
+              ? " bg-red-200 dark:bg-red-700 "
               : [1, 3, 5, 7].includes(subgrid)
-              ? " bg-slate-200 dark:bg-slate-800 "
+              ? " bg-slate-300 dark:bg-slate-500 "
               : " dark:bg-slate-950 bg-white"
           }
           ${
-            onMemo
-              ? " text-black dark:text-white text-opacity-60 "
+            onMemo && !fixed
+              ? " text-black dark:text-white text-opacity-20 dark:text-opacity-20 "
               : value === focusCell?.value
-              ? " text-blue-500 dark:text-blue-500 "
+              ? " text-blue-600 dark:text-blue-400 "
               : " dark:text-white text-black"
           }
         `}
