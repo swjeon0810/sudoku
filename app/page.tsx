@@ -6,30 +6,31 @@ import {
   MdDarkMode,
   MdSunny,
   MdEdit,
-  MdEditOff,
   MdDelete,
-  MdClose,
 } from "react-icons/md";
 import _ from "lodash";
 import ResetModal from "./components/ResetModal";
 import Cell from "./components/Cell";
 import FinishModal from "./components/FinishModal";
 import { SudokuGrid, SudokuCell } from "./lib/type";
-import { generateEmptyGrid } from "./lib/generate";
+// import { generateEmptyGrid } from "./lib/generate";
 import { checkDuplicateCell, checkDuplicateMemo } from "./lib/checkDuplicate";
+import Loading from "./components/Loading";
 
 export default function Home() {
+
   const historyRef = useRef<SudokuGrid[]>([]); // 그리드 기록을 저장해둠
   const initFocusCell = { row: -1, col: -1, value: -1, subgrid: -1 };
+  const [sudokuGrid, setSudokuGrid] = useState<any>(null);
   const [focusCell, setFocusCell] = useState(initFocusCell); // 포커스된 셀
-  const [sudokuGrid, setSudokuGrid] = useState<SudokuGrid>(generateEmptyGrid());
   const [showResetModal, setShowResetModal] = useState(false);
-  const [inputNum, setInputNum] = useState<number | null>(null);
+  const [activatedNum, setActivatedNum] = useState<number | null>(null);
   const [onRemove, setOnRemove] = useState(false);
   const [onMemo, setOnMemo] = useState(false);
   const [finishedNum, setFinishedNum] = useState<Set<number>>(new Set());
   const [finishGame, setFinishGame] = useState(false); // 게임 완료 여부
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(false); // 다크모드 여부
+  const [loading, setLoading] = useState(true); // 스도쿠를 세팅하는 동안 로딩화면 여부
 
   useEffect(() => {
     if (darkMode) {
@@ -38,6 +39,43 @@ export default function Home() {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
+
+  const fetchSudoku = async () => {
+    setLoading(true);
+    // API 를 통해 새로운 게임 데이터를 받아와서 그리드에 세팅.
+    try {
+      const response = await fetch('/api/sudoku');
+      const data = await response.json();
+      const rawData = data.medium
+
+      const grid: SudokuGrid = [];
+      for (let row = 0; row < 9; row++) {
+        const currentRow: SudokuCell[] = [];
+        for (let col = 0; col < 9; col++) {
+          let newValue = rawData[row][col]
+          currentRow.push({
+            row,
+            col,
+            value:newValue,
+            subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
+            fixed: newValue !== 0,
+            duplicated: false,
+            memo: new Set<number>(),
+          });
+        }
+        grid.push(currentRow);
+      }
+
+      setSudokuGrid(grid);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching sudoku:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSudoku();
+  }, []);
 
   const toggleDarkMode = () => {
     setDarkMode((prevMode) => !prevMode);
@@ -49,8 +87,8 @@ export default function Home() {
   const reset = () => {
     // 다시 시작 이벤트
     setFocusCell(initFocusCell); // 셀 선택 해제
-    setInputNum(null);
-    setSudokuGrid(generateEmptyGrid());
+    setActivatedNum(null);
+    fetchSudoku();
     historyRef.current = [];
   };
   const undo = () => {
@@ -65,10 +103,10 @@ export default function Home() {
     const { row, col, fixed, value, memo } = cell;
     setFocusCell(cell);
 
-    if (fixed) {
+    if (fixed) { //고정값인 경우
       if (onMemo || onRemove) return;
       else {
-        setInputNum(null);
+        setActivatedNum(null);
         return;
       }
     }
@@ -79,24 +117,23 @@ export default function Home() {
       return;
     }
 
-    if (inputNum === null) return;
+    if (activatedNum === null) return;
 
-    if (inputNum === value) {
+    if (activatedNum === value) {
       // 똑같은 값이 들어가있는 경우 지우기
 
       remove(row, col);
     } else {
       // 새로운 값 입력
-
       historyRef.current.push(_.cloneDeep(sudokuGrid));
 
-      setSudokuGrid((prevGrid) => {
+      setSudokuGrid((prevGrid:any) => {
         const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
 
         if (onMemo) {
           // 메모 모드일경우
-          if (memo.has(inputNum)) {
-            memo.delete(inputNum);
+          if (memo.has(activatedNum)) {
+            memo.delete(activatedNum);
             //메모에서 숫자 제거
             newGrid[row][col] = {
               ...newGrid[row][col],
@@ -106,14 +143,14 @@ export default function Home() {
             //메모에 숫자 추가
             newGrid[row][col] = {
               ...newGrid[row][col],
-              memo: memo.add(inputNum),
+              memo: memo.add(activatedNum),
             };
           }
         } else {
           // 메모 모드 아닐 경우
           newGrid[row][col] = {
             ...newGrid[row][col],
-            value: inputNum,
+            value: activatedNum,
           };
 
           //입력한 값 유효성 검사. 연관 그리드에 중복된 값이 있는지 체크.
@@ -121,7 +158,7 @@ export default function Home() {
             newGrid,
             row,
             col,
-            inputNum
+            activatedNum
           );
 
           if (duplicateCells.length > 1) {
@@ -137,11 +174,11 @@ export default function Home() {
             newGrid,
             row,
             col,
-            inputNum
+            activatedNum
           );
 
           duplicateCellsMemo.map(({ row, col, memo }) => {
-            memo.delete(inputNum);
+            memo.delete(activatedNum);
             newGrid[row][col] = { ...newGrid[row][col], memo };
           });
         }
@@ -180,14 +217,14 @@ export default function Home() {
 
   const remove = (row: number, col: number) => {
     // 숫자 지우기
-    setSudokuGrid((prevGrid) => {
+    setSudokuGrid((prevGrid:any) => {
       const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
 
       if (onMemo) {
         // 메모모드인 경우 메모에서 제거하기
 
         const newMemo = newGrid[row][col].memo;
-        inputNum && newMemo.delete(inputNum);
+        activatedNum && newMemo.delete(activatedNum);
         newGrid[row][col] = {
           ...newGrid[row][col],
           memo: newMemo,
@@ -201,7 +238,7 @@ export default function Home() {
           duplicated: false,
         };
 
-        if (inputNum) {
+        if (activatedNum) {
           checkFinished(newGrid);
         }
       }
@@ -229,16 +266,20 @@ export default function Home() {
     setFinishedNum(finishedList);
   };
   const handleNumberBarClick = (num: number) => {
-    setInputNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
+    setActivatedNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
     setFocusCell(initFocusCell);
   };
+  const deselect= ()=>{
+    setActivatedNum(null);
+    setFocusCell(initFocusCell);
+  }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 dark:bg-slate-900 dark:text-white">
-      <div className="flex flex-col z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex gap-5 pt-3">
+    <main className="flex min-h-screen flex-col items-center justify-between bg-white dark:bg-slate-900 dark:text-white">
+      <div className="pt-20 flex flex-col z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex gap-5 pt-3">
         {/* 다크모드 토글*/}
 
-        <label className="w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
+        <label className="caret-transparent w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
           {darkMode ? (
             <MdDarkMode className="text-black dark:text-white" />
           ) : (
@@ -266,9 +307,10 @@ export default function Home() {
           </button>
         </div>
         <div className="grid ">
-          {sudokuGrid.map((row, rowIndex) => (
+          {
+          sudokuGrid !== null && sudokuGrid.map((row:any, rowIndex:number) => (
             <div key={rowIndex} className="grid grid-cols-9 ">
-              {row.map((cell, colIndex) => (
+              {row.map((cell:any, colIndex:number) => (
                 <Cell
                   key={colIndex}
                   {...{
@@ -277,7 +319,7 @@ export default function Home() {
                     cell,
                     cellClickEvent,
                     onMemo,
-                    inputNum,
+                    activatedNum,
                     focusCell,
                   }}
                 />
@@ -286,26 +328,34 @@ export default function Home() {
           ))}
         </div>
         <div className="flex w-full justify-center space-x-1">
-          <button
-            className={`btn relative ${onMemo && "bg-white"}`}
-            onClick={() => setOnMemo(!onMemo)}
-          >
-            {onMemo && (
-              <MdClose className="top-0 left-0 w-full h-full absolute text-red-500" />
-            )}
-            <MdEdit className="w-full h-full" />
-          </button>
-          <button
-            className={`btn relative ${onRemove && "bg-white"}`}
-            onClick={() => {
+        {/* 메모 모드 토글*/}
+        <label className="caret-transparent w-full flex inline-flex justify-center items-center cursor-pointer pe-2 space-x-2">
+            <MdEdit className="w-7 h-7 text-black dark:text-white" />
+          <input
+            type="checkbox"
+            value=""
+            className="sr-only peer "
+            onChange={()=>{setOnMemo(!onMemo);deselect()}}
+          />
+          <div className="relative w-11 h-6 bg-gray-600 rounded-full dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
+        </label>
+        {/* 제거모드 토글*/}
+        <label className="caret-transparent w-full flex inline-flex justify-center items-center cursor-pointer pe-2 space-x-2">
+            <MdDelete className="w-7 h-7 text-black dark:text-white" />
+
+          <input
+            type="checkbox"
+            value=""
+            className="sr-only peer"
+            onChange={() => {
+              deselect();
               setOnRemove((prevOnRemove) => !prevOnRemove);
+              
             }}
-          >
-            {onRemove && (
-              <MdClose className="top-0 left-0 w-full h-full absolute text-red-500" />
-            )}
-            <MdDelete className="w-full h-full" />
-          </button>
+          />
+          <div className="relative w-11 h-6 bg-gray-600 rounded-full dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
+        </label>
+          
         </div>
         {/* Number Bar*/}
         <div className="flex gap-0.5">
@@ -314,8 +364,8 @@ export default function Home() {
             .map((_: any, index: number) => (
               <button
                 key={index}
-                className={`w-auto h-auto px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
-                  inputNum === index + 1
+                className={`caret-transparent w-auto h-auto px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
+                  activatedNum === index + 1
                     ? " bg-black text-white dark:bg-white dark:text-black"
                     : ""
                 } 
@@ -334,6 +384,8 @@ export default function Home() {
             ))}
         </div>
       </div>
+      {/* 로딩 화면 */}
+      {loading && <Loading/>}
       {/* reset modal */}
       {showResetModal && <ResetModal {...{ setShowResetModal, reset }} />}
       {/* Finish modal */}

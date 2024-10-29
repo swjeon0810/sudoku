@@ -12,25 +12,34 @@ const example2 = [
   [0, 0, 8, 2, 9, 0, 0, 6, 4],
 ];
 
+
+
 export const generateEmptyGrid = (): SudokuGrid => {
   // 비어있는 네모칸들 만들기
-  const grid: SudokuGrid = [];
-  for (let row = 0; row < 9; row++) {
-    const currentRow: SudokuCell[] = [];
-    for (let col = 0; col < 9; col++) {
-      let value = example2[row][col];
 
-      currentRow.push({
-        row,
-        col,
-        value,
-        subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
-        fixed: value !== 0,
-        duplicated: false,
-        memo: new Set<number>(),
-      });
+    const grid: SudokuGrid = [];
+    //const initData = data ? data : example2
+    for (let row = 0; row < 9; row++) {
+      const currentRow: SudokuCell[] = [];
+      for (let col = 0; col < 9; col++) {
+        //let value = initData[row][col];
+        let value = 0
+        currentRow.push({
+          row,
+          col,
+          value,
+          subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
+          fixed: value !== 0,
+          duplicated: false,
+          memo: new Set<number>(),
+        });
+      }
+      grid.push(currentRow);
     }
-    grid.push(currentRow);
+    return grid;
   }
-  return grid;
-};
+
+  export const setValues = () => {
+    
+  }
+  
