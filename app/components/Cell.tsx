@@ -8,7 +8,7 @@ type CellType = {
   cell: SudokuCell;
   cellClickEvent: any;
   onMemo: boolean;
-  inputNum: number | null;
+  activatedNum: number | null;
   focusCell: { row: number; col: number; value: number; subgrid: number };
 };
 export default function Cell({
@@ -17,7 +17,7 @@ export default function Cell({
   cell,
   cellClickEvent,
   onMemo,
-  inputNum,
+  activatedNum,
   focusCell,
 }: CellType) {
   const { row, col, value, subgrid, fixed, memo } = cell;
@@ -35,7 +35,7 @@ export default function Cell({
           .map((_: any, index: number) => (
             <p
               key={index}
-              className={`text-[9px] p-0 m-0 font-black ${
+              className={`caret-transparent text-[9px] p-0 m-0 font-black ${
                 onMemo
                   ? " text-black dark:text-white "
                   : " text-black text-opacity-50"
@@ -48,18 +48,18 @@ export default function Cell({
       {/* 숫자 */}
       <input
         type="text"
-        className={` w-8 h-8 sm:w-10 sm:h-10 border font-black border-white bg-opacity-50 dark:bg-opacity-50 dark:border-blue-100 text-center text-3xl sm:text-4xl cursor-pointer ${
+        className={`caret-transparent w-8 h-8 sm:w-10 sm:h-10 border font-black border-white bg-opacity-50 dark:bg-opacity-50 dark:border-blue-100 text-center text-3xl sm:text-4xl cursor-pointer ${
           (colIndex === 2 || colIndex === 5) && " border-r-4 "
         } ${(rowIndex === 2 || rowIndex === 5) && " border-b-4 "}
-          ${fixed ? " text-black " : " text-blue-500 "}
+          ${fixed ? " text-black " : " text-teal-300 "}
           ${
-            value === inputNum ||
+            value === activatedNum ||
             (row == focusCell?.row && col == focusCell.col) ||
-            (inputNum && memo.has(inputNum))
+            (activatedNum && memo.has(activatedNum))
               ? " bg-blue-400 dark:bg-blue-600 "
-              : row === focusCell?.row ||
+              : (row === focusCell?.row ||
                 col === focusCell?.col ||
-                subgrid === focusCell?.subgrid
+                subgrid === focusCell?.subgrid ) && !onMemo
               ? " bg-red-200 dark:bg-red-700 "
               : [1, 3, 5, 7].includes(subgrid)
               ? " bg-slate-300 dark:bg-slate-500 "
@@ -75,6 +75,7 @@ export default function Cell({
         `}
         value={cell.value > 0 ? cell.value : ""}
         readOnly
+        
       />
     </div>
   );

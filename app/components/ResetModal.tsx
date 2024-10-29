@@ -8,8 +8,8 @@ export default function ResetModal({
   reset,
 }: ResetModalType) {
   return (
-    <div className="flex justify-center absolute z-10 h-screen w-full bg-white dark:bg-gray-950 bg-opacity-90">
-      <div className="h-72 border rounded-lg shadow relative max-w-sm">
+    <div className="flex justify-center absolute z-10 h-screen w-full bg-white dark:bg-slate-900 bg-opacity-90">
+      <div className="place-self-center h-72 border rounded-lg shadow relative max-w-sm">
         <div className="flex justify-end p-2">
           <button
             type="button"
