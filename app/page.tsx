@@ -25,12 +25,11 @@ export default function Home() {
   const [focusCell, setFocusCell] = useState(initFocusCell); // 포커스된 셀
   const [showResetModal, setShowResetModal] = useState(false);
   const [activatedNum, setActivatedNum] = useState<number | null>(null);
-  const [onRemove, setOnRemove] = useState(false);
-  const [onMemo, setOnMemo] = useState(false);
   const [finishedNum, setFinishedNum] = useState<Set<number>>(new Set());
   const [finishGame, setFinishGame] = useState(false); // 게임 완료 여부
   const [darkMode, setDarkMode] = useState(false); // 다크모드 여부
   const [loading, setLoading] = useState(true); // 스도쿠를 세팅하는 동안 로딩화면 여부
+  const [state, setState] = useState("none") // none, memo, delete
 
   useEffect(() => {
     if (darkMode) {
@@ -84,13 +83,15 @@ export default function Home() {
   const handleResetBtn = () => {
     setShowResetModal(true);
   };
+
   const reset = () => {
     // 다시 시작 이벤트
     setFocusCell(initFocusCell); // 셀 선택 해제
     setActivatedNum(null);
     fetchSudoku();
-    historyRef.current = [];
+    historyRef.current = []; // 기록 지우기
   };
+
   const undo = () => {
     // 실행 취소 이벤트
     setFocusCell(initFocusCell); // 셀 선택 해제
@@ -99,99 +100,132 @@ export default function Home() {
   };
 
   /////////////////////셀 클릭 이벤트
-  const cellClickEvent = (cell: SudokuCell) => {
+  const cellClickEvent = (cell:SudokuCell)=>{
     const { row, col, fixed, value, memo } = cell;
     setFocusCell(cell);
 
-    if (fixed) { //고정값인 경우
-      if (onMemo || onRemove) return;
-      else {
-        setActivatedNum(null);
+    // 1. 고정값인 경우 리턴
+    if (fixed) return ;
+
+    // 2. 어떤 모드인지에 따라 나눈다.
+    switch (state) {
+
+      case 'delete':
+
+        deleteEvent(row, col);
         return;
-      }
-    }
 
-    if (onRemove) {
-      // "제거 모드인 경우"
-      remove(row, col);
-      return;
-    }
+      case 'memo':
 
-    if (activatedNum === null) return;
+        if (activatedNum === null){  
+          return; // 활성화 숫자 없을 경우 리턴
+        
+        } else { // 활성화된 숫자가 존재할경우 메모하기
+          
+          // 새로운 값 입력
+          historyRef.current.push(_.cloneDeep(sudokuGrid));
 
-    if (activatedNum === value) {
-      // 똑같은 값이 들어가있는 경우 지우기
+          setSudokuGrid((prevGrid:any) => {
+            const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
 
-      remove(row, col);
-    } else {
-      // 새로운 값 입력
-      historyRef.current.push(_.cloneDeep(sudokuGrid));
+            if (memo.has(activatedNum)) { // 이미 숫자가 메모되어 있는 경우는 제거
+              memo.delete(activatedNum);
+              newGrid[row][col] = {
+                ...newGrid[row][col],
+                memo: memo,
+              };
+            } else { //메모에 숫자 추가
+              newGrid[row][col] = {
+                ...newGrid[row][col],
+                memo: memo.add(activatedNum),
+              };
+            }
+            return newGrid;
+          });
+        }
+        return;
 
-      setSudokuGrid((prevGrid:any) => {
-        const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
+      case 'none':
 
-        if (onMemo) {
-          // 메모 모드일경우
-          if (memo.has(activatedNum)) {
-            memo.delete(activatedNum);
-            //메모에서 숫자 제거
-            newGrid[row][col] = {
-              ...newGrid[row][col],
-              memo: memo,
-            };
-          } else {
-            //메모에 숫자 추가
-            newGrid[row][col] = {
-              ...newGrid[row][col],
-              memo: memo.add(activatedNum),
-            };
-          }
-        } else {
-          // 메모 모드 아닐 경우
-          newGrid[row][col] = {
-            ...newGrid[row][col],
-            value: activatedNum,
-          };
+        if (activatedNum === null){  
+          return; // 활성화 숫자 없을 경우 리턴
 
-          //입력한 값 유효성 검사. 연관 그리드에 중복된 값이 있는지 체크.
-          const duplicateCells: SudokuCell[] = checkDuplicateCell(
-            newGrid,
-            row,
-            col,
-            activatedNum
-          );
+        } else{
+            // 새로운 값 입력
+            historyRef.current.push(_.cloneDeep(sudokuGrid));
+      
+            setSudokuGrid((prevGrid:any) => {
+                const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
 
-          if (duplicateCells.length > 1) {
-            // 중복되는 셀이 하나인 경우는 자기 자신이므로 넘긴다.
-            // 여러 개인 경우 duplicated 표시함.
-            duplicateCells.map(({ row, col }) => {
-              newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
+                const newValue = activatedNum === value ? -1 : activatedNum; // 입력하려는 값이 기존 값과 같으면 지우기
+
+                newGrid[row][col] = {
+                  ...newGrid[row][col],
+                  value: newValue,
+                };
+      
+                //입력한 값 유효성 검사. 연관 그리드에 중복된 값이 있는지 체크.
+                const duplicateCells: SudokuCell[] = checkDuplicateCell(
+                  newGrid,
+                  row,
+                  col,
+                  activatedNum
+                );
+      
+                if (duplicateCells.length > 1) {
+                  // 중복되는 셀이 하나인 경우는 자기 자신이므로 넘긴다.
+                  // 여러 개인 경우 duplicated 표시함.
+                  duplicateCells.map(({ row, col }) => {
+                    newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
+                  });
+                }
+      
+                // 연관 그리드 메모에서 해당 값을 지운다.
+                const duplicateCellsMemo: SudokuCell[] = checkDuplicateMemo(
+                  newGrid,
+                  row,
+                  col,
+                  activatedNum
+                );
+      
+                duplicateCellsMemo.map(({ row, col, memo }) => {
+                  memo.delete(activatedNum);
+                  newGrid[row][col] = { ...newGrid[row][col], memo };
+                });
+      
+              // 해당 숫자가 9개 이상 입력된 경우 더이상 입력하지 못하도록 비활성화.
+              checkFinishedNumber(newGrid);
+      
+              validate(newGrid);
+      
+              return newGrid;
             });
           }
 
-          // 연관 그리드 메모에서 해당 값을 지운다.
-          const duplicateCellsMemo: SudokuCell[] = checkDuplicateMemo(
-            newGrid,
-            row,
-            col,
-            activatedNum
-          );
+        return
 
-          duplicateCellsMemo.map(({ row, col, memo }) => {
-            memo.delete(activatedNum);
-            newGrid[row][col] = { ...newGrid[row][col], memo };
-          });
-        }
-
-        // 해당 숫자가 9개 이상 입력된 경우 더이상 입력하지 못하도록 비활성화.
-        checkFinished(newGrid);
-
-        validate(newGrid);
-
-        return newGrid;
-      });
+      default :
+        return;
     }
-  };
+  }
+
+  const deleteEvent = (row: number, col: number) => {
+
+     // 메모든 값이 있든 싹다 지우기
+    setSudokuGrid((prevGrid:any) => {
+      const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
+
+      newGrid[row][col] = {
+        ...newGrid[row][col],
+        value: -1,                // 값을 0? -1 ?
+        duplicated: false,        // 값이 없으므로 중복여부 해제
+        memo: new Set<number>(), // 메모 초기화
+      };
+      checkFinishedNumber(newGrid);
+
+      return newGrid;
+    });
+  }
 
   const validate = (grid: SudokuGrid) => {
     // 현재 그리드를 검증한다. 중복값이 없고, 숫자가 모두 9개씩 입력되었으면 문제 없음 => 정답!
@@ -215,39 +249,7 @@ export default function Home() {
     } else return;
   };
 
-  const remove = (row: number, col: number) => {
-    // 숫자 지우기
-    setSudokuGrid((prevGrid:any) => {
-      const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
-
-      if (onMemo) {
-        // 메모모드인 경우 메모에서 제거하기
-
-        const newMemo = newGrid[row][col].memo;
-        activatedNum && newMemo.delete(activatedNum);
-        newGrid[row][col] = {
-          ...newGrid[row][col],
-          memo: newMemo,
-        };
-      } else {
-        // 메모모드 아닌경우, 해당 셀을 비우기
-
-        newGrid[row][col] = {
-          ...newGrid[row][col],
-          value: -1,
-          duplicated: false,
-        };
-
-        if (activatedNum) {
-          checkFinished(newGrid);
-        }
-      }
-
-      return newGrid;
-    });
-  };
-
-  const checkFinished = (newGrid: SudokuGrid) => {
+  const checkFinishedNumber = (newGrid: SudokuGrid) => {
     // 전체 그리드를 스캔하여 각 숫자 별 소진된 개수 카운트
     // 9개 이상일 경우 finished 리스트에 추가한 후 상태 업데이트.
     // number Panel에서 해당 숫자들을 비활성화하기 위함.
@@ -265,18 +267,21 @@ export default function Home() {
 
     setFinishedNum(finishedList);
   };
+
   const handleNumberBarClick = (num: number) => {
+    if (state === "delete") setState("none");
     setActivatedNum(num); // 현재 클릭한 숫자 "쓰기 모드" 활성화
     setFocusCell(initFocusCell);
   };
+
   const deselect= ()=>{
     setActivatedNum(null);
     setFocusCell(initFocusCell);
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between bg-white dark:bg-slate-900 dark:text-white">
-      <div className="pt-20 flex flex-col z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex gap-5 pt-3">
+    <main className="flex flex-col items-center bg-white dark:bg-slate-900 dark:text-white">
+      <div className="pt-20 flex flex-col z-10 w-full min-h-screen items-center font-mono gap-5">
         {/* 다크모드 토글*/}
 
         <label className="caret-transparent w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
@@ -294,16 +299,19 @@ export default function Home() {
           />
           <div className="relative w-11 h-6 bg-gray-600 rounded-full dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
         </label>
-        <p>Welcome !</p>
+        {/* 타이틀 */}
+        <h1 className="font-serif text-black dark:text-pink-200 w-full text-center font-bold tracking-widest text-lg ">Happy SUDOKU</h1>
         {/* Toolbar */}
-        <div className="flex w-full justify-center space-x-1">
+        <div className="flex w-full px-2 justify-center space-x-1">
           {/* 다시 시작 버튼 */}
-          <button className="btn" onClick={handleResetBtn}>
-            <VscDebugRestart className="w-full h-full" />
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full" onClick={handleResetBtn}>
+            <VscDebugRestart className="w-7 h-7" />
+            <p className="font-bold tracking-widest">재시작</p>
           </button>
           {/* 실행취소 버튼*/}
-          <button className="btn" onClick={undo}>
-            <MdUndo className="w-full h-full" />
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full" onClick={undo}>
+            <MdUndo className="w-7 h-7" />
+            <p className="font-bold tracking-widest">뒤로가기</p>
           </button>
         </div>
         <div className="grid ">
@@ -318,7 +326,7 @@ export default function Home() {
                     colIndex,
                     cell,
                     cellClickEvent,
-                    onMemo,
+                    state,
                     activatedNum,
                     focusCell,
                   }}
@@ -327,47 +335,16 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <div className="flex w-full justify-center space-x-1">
-        {/* 메모 모드 토글*/}
-        <label className="caret-transparent w-full flex inline-flex justify-center items-center cursor-pointer pe-2 space-x-2">
-            <MdEdit className="w-7 h-7 text-black dark:text-white" />
-          <input
-            type="checkbox"
-            value=""
-            className="sr-only peer "
-            onChange={()=>{setOnMemo(!onMemo);deselect()}}
-          />
-          <div className="relative w-11 h-6 bg-gray-600 rounded-full dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
-        </label>
-        {/* 제거모드 토글*/}
-        <label className="caret-transparent w-full flex inline-flex justify-center items-center cursor-pointer pe-2 space-x-2">
-            <MdDelete className="w-7 h-7 text-black dark:text-white" />
-
-          <input
-            type="checkbox"
-            value=""
-            className="sr-only peer"
-            onChange={() => {
-              deselect();
-              setOnRemove((prevOnRemove) => !prevOnRemove);
-              
-            }}
-          />
-          <div className="relative w-11 h-6 bg-gray-600 rounded-full dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
-        </label>
-          
-        </div>
         {/* Number Bar*/}
-        <div className="flex gap-0.5">
+        <div className="flex w-full justify-between space-x-1">
           {Array(9)
             .fill(null)
             .map((_: any, index: number) => (
               <button
                 key={index}
-                className={`caret-transparent w-auto h-auto px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
+                className={`caret-transparent sm:w-10 sm:h-10 px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
                   activatedNum === index + 1
-                    ? " bg-black text-white dark:bg-white dark:text-black"
-                    : ""
+                    && " bg-black text-white dark:bg-white dark:text-black"
                 } 
               ${
                 finishedNum.has(index + 1)
@@ -383,6 +360,25 @@ export default function Home() {
               </button>
             ))}
         </div>
+        <div className="flex w-full px-2 justify-center space-x-2">
+
+          {/* 메모 버튼*/}
+
+          <button className={`${state==="memo"&& "bg-green-300 "} space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full`}
+            onClick={()=>{deselect();state==="memo"?setState("none"):setState("memo")}}>
+            <MdEdit className="w-7 h-7 " />
+            <p className="font-bold tracking-widest">메모하기</p>
+          </button>
+          
+          {/* 지우기 버튼*/}
+          <button className={`${state==="delete"&& "bg-green-300 "} space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full`}
+            onClick={()=>{deselect();state==="delete"?setState("none"):setState("delete")}}>
+            <MdDelete className="w-7 h-7 " />
+            <p className="font-bold tracking-widest">지우기</p>
+          </button>
+
+        </div>
+        
       </div>
       {/* 로딩 화면 */}
       {loading && <Loading/>}

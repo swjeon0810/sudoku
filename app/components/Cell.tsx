@@ -7,7 +7,7 @@ type CellType = {
   colIndex: number;
   cell: SudokuCell;
   cellClickEvent: any;
-  onMemo: boolean;
+  state: string;
   activatedNum: number | null;
   focusCell: { row: number; col: number; value: number; subgrid: number };
 };
@@ -16,7 +16,7 @@ export default function Cell({
   colIndex,
   cell,
   cellClickEvent,
-  onMemo,
+  state,
   activatedNum,
   focusCell,
 }: CellType) {
@@ -36,7 +36,7 @@ export default function Cell({
             <p
               key={index}
               className={`caret-transparent text-[9px] p-0 m-0 font-black ${
-                onMemo
+                state==="memo"
                   ? " text-black dark:text-white "
                   : " text-black text-opacity-50"
               }`}
@@ -48,10 +48,10 @@ export default function Cell({
       {/* 숫자 */}
       <input
         type="text"
-        className={`caret-transparent w-8 h-8 sm:w-10 sm:h-10 border font-black border-white bg-opacity-50 dark:bg-opacity-50 dark:border-blue-100 text-center text-3xl sm:text-4xl cursor-pointer ${
-          (colIndex === 2 || colIndex === 5) && " border-r-4 "
-        } ${(rowIndex === 2 || rowIndex === 5) && " border-b-4 "}
-          ${fixed ? " text-black " : " text-teal-300 "}
+        className={`caret-transparent w-8 h-8 sm:w-12 sm:h-12 border font-black border-white bg-opacity-50 dark:bg-opacity-50 dark:border-blue-100 text-center text-3xl sm:text-4xl cursor-pointer ${
+          (colIndex === 2 || colIndex === 5) && " border-r-4 sm:border-r-2 "
+        } ${(rowIndex === 2 || rowIndex === 5) && " border-b-4 sm:border-b-2"}
+          ${fixed ? " text-black " : " text-blue-800 "}
           ${
             value === activatedNum ||
             (row == focusCell?.row && col == focusCell.col) ||
@@ -59,14 +59,14 @@ export default function Cell({
               ? " bg-blue-400 dark:bg-blue-600 "
               : (row === focusCell?.row ||
                 col === focusCell?.col ||
-                subgrid === focusCell?.subgrid ) && !onMemo
+                subgrid === focusCell?.subgrid ) && state!=="memo"
               ? " bg-red-200 dark:bg-red-700 "
               : [1, 3, 5, 7].includes(subgrid)
               ? " bg-slate-300 dark:bg-slate-500 "
-              : " dark:bg-slate-950 bg-white"
+              : " dark:bg-slate-950 bg-white" 
           }
           ${
-            onMemo && !fixed
+            state==="memo" && !fixed
               ? " text-black dark:text-white text-opacity-20 dark:text-opacity-20 "
               : value === focusCell?.value
               ? " text-blue-600 dark:text-blue-400 "
