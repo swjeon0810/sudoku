@@ -46,7 +46,7 @@ export default function ResetModal({
             ></path>
           </svg>
           <h3 className="text-lg font-normal text-black dark:text-gray-300 mt-5 mb-6">
-            Would you like to restart the game?
+            게임을 다시 시작할까요?
           </h3>
           <a
             href="#"
@@ -56,14 +56,14 @@ export default function ResetModal({
               reset();
             }}
           >
-            Yes
+            예
           </a>
           <a
             href="#"
             className="text-gray-900 dark:text-white bg-white hover:bg-gray-100 focus:ring-4 focus:ring-cyan-200 border border-gray-200 font-medium inline-flex items-center rounded-lg text-base px-3 py-2.5 text-center"
             onClick={() => setShowResetModal(false)}
           >
-            No
+            취소
           </a>
         </div>
       </div>
