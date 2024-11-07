@@ -1,11 +1,11 @@
 import React from "react";
 type ResetModalType = {
   setShowResetModal: any;
-  reset: any;
+  initGame: any;
 };
 export default function ResetModal({
   setShowResetModal,
-  reset,
+  initGame,
 }: ResetModalType) {
   return (
     <div className="flex justify-center absolute z-10 h-screen w-full bg-white dark:bg-slate-900 bg-opacity-90">
@@ -53,7 +53,7 @@ export default function ResetModal({
             className="text-black dark:text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-base inline-flex items-center px-3 py-2.5 text-center mr-2"
             onClick={() => {
               setShowResetModal(false);
-              reset();
+              initGame("reset");
             }}
           >
             예

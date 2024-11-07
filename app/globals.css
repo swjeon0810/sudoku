@@ -3,27 +3,11 @@
 @tailwind utilities;
 
 :root {
+  
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
 
-  --secondary-glow: conic-gradient(
-    from 10deg at 50% 50%,
-    #eb7494 0deg,
-    #ae77b2 55deg,
-    #97b5da 120deg,
-    #0099ca 160deg,
-    transparent 360deg
-  );
-
-  --third-glow: conic-gradient(
-    from 90deg at 50% 50%,
-    #ff8b7e 0deg,
-    #e24e6b 160deg,
-    #7ed2da 120deg,
-    #8bdce0 55deg,
-    transparent 360deg
-  );
 }
 
 /* 시스템이 다크모드일때 . */
@@ -32,29 +16,12 @@
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
-
-    --secondary-glow: conic-gradient(
-      from 10deg at 50% 50%,
-      #b33752 0deg,
-      /* 어두운 톤의 #eb7494 */ #73408a 55deg,
-      /* 어두운 톤의 #ae77b2 */ #4a6b8e 120deg,
-      /* 어두운 톤의 #97b5da */ #006b94 160deg,
-      /* 어두운 톤의 #0099ca */ transparent 360deg
-    );
-
-    --third-glow: conic-gradient(
-      from 90deg at 50% 50%,
-      #b35852 0deg,
-      /* 어두운 톤의 #ff8b7e */ #a42e4c 160deg,
-      /* 어두운 톤의 #e24e6b */ #4a8e92 120deg,
-      /* 어두운 톤의 #7ed2da */ #589a9c 55deg,
-      /* 어두운 톤의 #8bdce0 */ transparent 360deg
-    );
   }
 }
 
 body {
   overflow: hidden;
+  position: relative;
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
       to bottom,
@@ -62,59 +29,6 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
-}
-
-body::before {
-  content: "";
-  position: absolute;
-  background: var(--third-glow);
-  border-radius: 50%;
-  width: 50vw;
-  height: 50vw;
-  margin-left: -200px;
-  filter: blur(90px);
-  top: calc(50vh - 50vw / 2);
-  left: calc(50vw);
-
-  animation: animateBefore 7s cubic-bezier(0.47, 0, 0.745, 0.715) infinite;
-}
-
-body::after {
-  content: "";
-  position: absolute;
-  background: var(--secondary-glow);
-  border-radius: 50%;
-  width: 500px;
-  height: 700px;
-  filter: blur(90px);
-  top: calc(50vh - 50vw / 2);
-  left: calc(50vw - 50vw / 2);
-
-  animation: animateAfter 7s cubic-bezier(0.47, 0, 0.745, 0.715) infinite;
-}
-
-@keyframes animateBefore {
-  0% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(250px) scale(0.8); /* 200px -> 50px 이동 범위를 줄임*/
-  }
-  100% {
-    transform: translateY(0);
-  }
-}
-
-@keyframes animateAfter {
-  0% {
-    transform: translateX(0);
-  }
-  50% {
-    transform: translateX(-250px) scale(1.2); /* -250px -> -50px 이동 범위를 줄임*/
-  }
-  100% {
-    transform: translateX(0);
-  }
 }
 
 .btn {

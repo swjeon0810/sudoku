@@ -39,58 +39,81 @@ export default function Home() {
     }
   }, [darkMode]);
 
-  const fetchSudoku = async () => {
+  const fetchSudoku = async (option:string) => {
     setLoading(true);
-    // API 를 통해 새로운 게임 데이터를 받아와서 그리드에 세팅.
-    try {
-      const response = await fetch('/api/sudoku');
-      const data = await response.json();
-      const rawData = data.medium
-
-      const grid: SudokuGrid = [];
-      for (let row = 0; row < 9; row++) {
-        const currentRow: SudokuCell[] = [];
-        for (let col = 0; col < 9; col++) {
-          let newValue = rawData[row][col]
-          currentRow.push({
-            row,
-            col,
-            value:newValue,
-            subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
-            fixed: newValue !== 0,
-            duplicated: false,
-            memo: new Set<number>(),
-          });
-        }
-        grid.push(currentRow);
+    let newData;
+    
+    if (option === "reset"){ // 재시작일 경우 reset
+    
+      const sessionData = sessionStorage.getItem("thisGame")
+      if(sessionData){
+        const parsed = JSON.parse(sessionData)
+        newData = parsed.medium
       }
+    
+    } else if (option === "new"){ // 새 게임일 경우 new
+      
+      try {
+        const response = await fetch('/api/sudoku'); // API 를 통해 새로운 게임 데이터를 받아와서 그리드에 세팅.
+        const data = await response.json();
+        newData = data.medium
+        sessionStorage.setItem("thisGame", JSON.stringify(data))
 
-      setSudokuGrid(grid);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching sudoku:', error);
+      } catch (error) {
+        console.error('Error fetching sudoku:', error);
+      }
     }
+
+    const grid: SudokuGrid = [];
+
+    for (let row = 0; row < 9; row++) {
+      const currentRow: SudokuCell[] = [];
+      for (let col = 0; col < 9; col++) {
+        let newValue = newData[row][col]
+        currentRow.push({
+          row,
+          col,
+          value:newValue,
+          subgrid: Math.floor(row / 3) * 3 + Math.floor(col / 3),
+          fixed: newValue !== 0,
+          duplicated: false,
+          memo: new Set<number>(),
+        });
+      }
+      grid.push(currentRow);
+    }
+
+    setSudokuGrid(grid);
+    setLoading(false);
+    
   };
 
   useEffect(() => {
-    fetchSudoku();
+    fetchSudoku("new");
   }, []);
 
   const toggleDarkMode = () => {
     setDarkMode((prevMode) => !prevMode);
   };
 
-  const handleResetBtn = () => {
+  const handleResetBtn = () => { // 재시작 이벤트
     setShowResetModal(true);
   };
 
-  const reset = () => {
-    // 다시 시작 이벤트
+  const handleNewGame = ()=> {
+    // 새 게임
     setFocusCell(initFocusCell); // 셀 선택 해제
     setActivatedNum(null);
-    fetchSudoku();
+    fetchSudoku("new");
     historyRef.current = []; // 기록 지우기
   };
+  
+  const initGame = (tag: string) => {
+    tag==="new"? fetchSudoku("new"):fetchSudoku("reset")
+    setFocusCell(initFocusCell); // 셀 선택 해제
+    setActivatedNum(null);
+    historyRef.current = []; // 기록 지우기
+  }
 
   const undo = () => {
     // 실행 취소 이벤트
@@ -101,11 +124,18 @@ export default function Home() {
 
   /////////////////////셀 클릭 이벤트
   const cellClickEvent = (cell:SudokuCell)=>{
-    const { row, col, fixed, value, memo } = cell;
-    setFocusCell(cell);
+    const { row, col, fixed, value, memo, duplicated } = cell;
 
-    // 1. 고정값인 경우 리턴
-    if (fixed) return ;
+    if (fixed){ 
+      if (activatedNum !== null) return // 고정값인데 활성 숫자가 있는 경우 그냥 리턴
+      else {
+        setFocusCell(cell);             // 고정값인데 활성 숫자가 없는 경우 경우 
+        return;
+      }
+    }
+
+    // 고정값이 아닌 경우
+    setFocusCell(cell);
 
     // 2. 어떤 모드인지에 따라 나눈다.
     switch (state) {
@@ -157,11 +187,13 @@ export default function Home() {
             setSudokuGrid((prevGrid:any) => {
                 const newGrid: SudokuGrid = [...prevGrid]; // 복사하여 새로운 배열 생성
 
-                const newValue = activatedNum === value ? -1 : activatedNum; // 입력하려는 값이 기존 값과 같으면 지우기
+                const newValue = activatedNum === value ? -1 : activatedNum; // 입력하려는 값(activatedNum)이 기존 값(value)과 같으면 지우기
 
                 newGrid[row][col] = {
                   ...newGrid[row][col],
                   value: newValue,
+                  duplicated: newValue === -1? false : duplicated,
+                  memo: new Set<number>()
                 };
       
                 //입력한 값 유효성 검사. 연관 그리드에 중복된 값이 있는지 체크.
@@ -172,12 +204,13 @@ export default function Home() {
                   activatedNum
                 );
       
-                if (duplicateCells.length > 1) {
+                if (duplicateCells.length > 1 && newValue !== -1) {
                   // 중복되는 셀이 하나인 경우는 자기 자신이므로 넘긴다.
                   // 여러 개인 경우 duplicated 표시함.
-                  duplicateCells.map(({ row, col }) => {
-                    newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
-                  });
+                  newGrid[row][col] = { ...newGrid[row][col], duplicated: true };
+
+                }else{ // 중복셀이 없는 경우 다시 duplicated 를 false로 변경
+                  newGrid[row][col] = { ...newGrid[row][col], duplicated: false };
                 }
       
                 // 연관 그리드 메모에서 해당 값을 지운다.
@@ -280,10 +313,10 @@ export default function Home() {
   }
 
   return (
-    <main className="flex flex-col items-center bg-white dark:bg-slate-900 dark:text-white">
-      <div className="pt-20 flex flex-col z-10 w-full min-h-screen items-center font-mono gap-5">
+    <main className="pt-10 w-full h-screen flex items-center justify-center bg-slate-200 dark:bg-slate-900 dark:text-white">
+      <div className="h-full w-full flex flex-col z-10 items-center justify-center gap-3 lg:w-1/2 md:w-3/4">
+        <div className="w-full h-auto ">
         {/* 다크모드 토글*/}
-
         <label className="caret-transparent w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
           {darkMode ? (
             <MdDarkMode className="text-black dark:text-white" />
@@ -297,22 +330,27 @@ export default function Home() {
             className="sr-only peer"
             onChange={toggleDarkMode}
           />
-          <div className="relative w-11 h-6 bg-gray-600 rounded-full dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
+          <div className="relative w-11 h-6 bg-gray-600 rounded-lg dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-lg after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
         </label>
         {/* 타이틀 */}
-        <h1 className="font-serif text-black dark:text-pink-200 w-full text-center font-bold tracking-widest text-lg ">Happy SUDOKU</h1>
+        <h1 className="py-7 font-serif text-black dark:text-pink-200 w-full text-center font-bold tracking-widest text-lg ">Happy SUDOKU</h1>
         {/* Toolbar */}
         <div className="flex w-full px-2 justify-center space-x-1">
-          {/* 다시 시작 버튼 */}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full" onClick={handleResetBtn}>
+          {/* 새 게임 버튼 */}
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={()=>initGame("new")}>
+            <p className="font-bold tracking-widest">새게임</p>
+          </button>
+          {/* 재시작 버튼 */}
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={handleResetBtn}>
             <VscDebugRestart className="w-7 h-7" />
             <p className="font-bold tracking-widest">재시작</p>
           </button>
           {/* 실행취소 버튼*/}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full" onClick={undo}>
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={undo}>
             <MdUndo className="w-7 h-7" />
             <p className="font-bold tracking-widest">뒤로가기</p>
           </button>
+        </div>
         </div>
         <div className="grid ">
           {
@@ -336,20 +374,19 @@ export default function Home() {
           ))}
         </div>
         {/* Number Bar*/}
-        <div className="flex w-full justify-between space-x-1">
+        <div className="flex w-full justify-center space-x-1">
           {Array(9)
             .fill(null)
             .map((_: any, index: number) => (
               <button
                 key={index}
-                className={`caret-transparent sm:w-10 sm:h-10 px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
+                className={`hover:bg-black hover:text-white dark:hover:bg-slate-100 dark:hover:text-black caret-transparent w-10 h-10 px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
                   activatedNum === index + 1
-                    && " bg-black text-white dark:bg-white dark:text-black"
+                    && " bg-black text-white dark:bg-white dark:text-slate-950"
                 } 
               ${
                 finishedNum.has(index + 1)
-                  ? " bg-gray-500 dark:bg-gray-400"
-                  : " hover:bg-slate-100 hover:text-black dark:hover:bg-slate-100 dark:hover:text-black"
+                  && " bg-gray-500 dark:bg-gray-400"
               }`}
                 onClick={() => {
                   handleNumberBarClick(index + 1);
@@ -360,18 +397,18 @@ export default function Home() {
               </button>
             ))}
         </div>
-        <div className="flex w-full px-2 justify-center space-x-2">
+        <div className="flex w-full px-2 justify-center space-x-2 mb-5 sm:mb-10">
 
           {/* 메모 버튼*/}
 
-          <button className={`${state==="memo"&& "bg-green-300 "} space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full`}
+          <button className={`${state==="memo"? "bg-green-300 ": "bg-white "} space-x-1 text-black dark:text-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
             onClick={()=>{deselect();state==="memo"?setState("none"):setState("memo")}}>
             <MdEdit className="w-7 h-7 " />
             <p className="font-bold tracking-widest">메모하기</p>
           </button>
           
           {/* 지우기 버튼*/}
-          <button className={`${state==="delete"&& "bg-green-300 "} space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-full`}
+          <button className={`${state==="delete"? "bg-green-300 ": "bg-white "} space-x-1 text-black dark:text-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
             onClick={()=>{deselect();state==="delete"?setState("none"):setState("delete")}}>
             <MdDelete className="w-7 h-7 " />
             <p className="font-bold tracking-widest">지우기</p>
@@ -383,7 +420,7 @@ export default function Home() {
       {/* 로딩 화면 */}
       {loading && <Loading/>}
       {/* reset modal */}
-      {showResetModal && <ResetModal {...{ setShowResetModal, reset }} />}
+      {showResetModal && <ResetModal {...{ setShowResetModal, initGame }} />}
       {/* Finish modal */}
       {finishGame && <FinishModal />}
     </main>
