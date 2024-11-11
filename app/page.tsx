@@ -100,16 +100,9 @@ export default function Home() {
     setShowResetModal(true);
   };
 
-  const handleNewGame = ()=> {
-    // 새 게임
-    setFocusCell(initFocusCell); // 셀 선택 해제
-    setActivatedNum(null);
-    fetchSudoku("new");
-    historyRef.current = []; // 기록 지우기
-  };
-  
   const initGame = (tag: string) => {
     tag==="new"? fetchSudoku("new"):fetchSudoku("reset")
+    setFinishedNum(new Set())
     setFocusCell(initFocusCell); // 셀 선택 해제
     setActivatedNum(null);
     historyRef.current = []; // 기록 지우기
@@ -227,7 +220,8 @@ export default function Home() {
                 });
       
               // 해당 숫자가 9개 이상 입력된 경우 더이상 입력하지 못하도록 비활성화.
-              checkFinishedNumber(newGrid);
+              const finishedList = checkFinishedNumber(newGrid);
+              finishedList.has(activatedNum) && setActivatedNum(null)
       
               validate(newGrid);
       
@@ -299,6 +293,7 @@ export default function Home() {
     }
 
     setFinishedNum(finishedList);
+    return finishedList
   };
 
   const handleNumberBarClick = (num: number) => {
@@ -308,13 +303,13 @@ export default function Home() {
   };
 
   const deselect= ()=>{
-    setActivatedNum(null);
+    // setActivatedNum(null);
     setFocusCell(initFocusCell);
   }
 
   return (
-    <main className="pt-10 w-full h-screen flex items-center justify-center bg-slate-200 dark:bg-slate-900 dark:text-white">
-      <div className="h-full w-full flex flex-col z-10 items-center justify-center gap-3 lg:w-1/2 md:w-3/4">
+    <main className="w-full h-screen flex items-center justify-center bg-slate-200 dark:bg-slate-900 dark:text-white">
+      <div className="pt-10 h-full w-full flex flex-col z-10 items-center justify-center gap-3 lg:w-1/2 md:w-3/4">
         <div className="w-full h-auto ">
         {/* 다크모드 토글*/}
         <label className="caret-transparent w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
@@ -337,16 +332,16 @@ export default function Home() {
         {/* Toolbar */}
         <div className="flex w-full px-2 justify-center space-x-1">
           {/* 새 게임 버튼 */}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={()=>initGame("new")}>
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={()=>initGame("new")}>
             <p className="font-bold tracking-widest">새게임</p>
           </button>
           {/* 재시작 버튼 */}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={handleResetBtn}>
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={handleResetBtn}>
             <VscDebugRestart className="w-7 h-7" />
             <p className="font-bold tracking-widest">재시작</p>
           </button>
           {/* 실행취소 버튼*/}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={undo}>
+          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={undo}>
             <MdUndo className="w-7 h-7" />
             <p className="font-bold tracking-widest">뒤로가기</p>
           </button>
@@ -380,13 +375,13 @@ export default function Home() {
             .map((_: any, index: number) => (
               <button
                 key={index}
-                className={`hover:bg-black hover:text-white dark:hover:bg-slate-100 dark:hover:text-black caret-transparent w-10 h-10 px-2 text-center text-black dark:text-white text-2xl border border-black dark:border-slate-100 ${
+                className={` caret-transparent w-10 h-10 px-2 text-center  text-2xl border border-black dark:border-slate-100 ${
                   activatedNum === index + 1
-                    && " bg-black text-white dark:bg-white dark:text-slate-950"
+                    && " bg-black text-white dark:bg-white dark:text-black"
                 } 
               ${
                 finishedNum.has(index + 1)
-                  && " bg-gray-500 dark:bg-gray-400"
+                  ? " bg-gray-500 dark:bg-gray-400 text-black " : "dark:hover:bg-slate-100 dark:hover:text-black hover:bg-black hover:text-white"
               }`}
                 onClick={() => {
                   handleNumberBarClick(index + 1);
@@ -401,14 +396,14 @@ export default function Home() {
 
           {/* 메모 버튼*/}
 
-          <button className={`${state==="memo"? "bg-green-300 ": "bg-white "} space-x-1 text-black dark:text-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
+          <button className={`${state==="memo"? "bg-green-300 dark:bg-green-300 text-black dark:text-black": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1  hover:bg-green-300 dark:hover:bg-green-300 hover:text-black dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
             onClick={()=>{deselect();state==="memo"?setState("none"):setState("memo")}}>
             <MdEdit className="w-7 h-7 " />
             <p className="font-bold tracking-widest">메모하기</p>
           </button>
           
           {/* 지우기 버튼*/}
-          <button className={`${state==="delete"? "bg-green-300 ": "bg-white "} space-x-1 text-black dark:text-white dark:bg-slate-950 hover:bg-green-300 py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
+          <button className={`${state==="delete"? "bg-green-300 dark:bg-green-300 text-black dark:text-black ": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1 hover:bg-green-300 dark:hover:bg-green-300 hover:text-black dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
             onClick={()=>{deselect();state==="delete"?setState("none"):setState("delete")}}>
             <MdDelete className="w-7 h-7 " />
             <p className="font-bold tracking-widest">지우기</p>
@@ -422,7 +417,7 @@ export default function Home() {
       {/* reset modal */}
       {showResetModal && <ResetModal {...{ setShowResetModal, initGame }} />}
       {/* Finish modal */}
-      {finishGame && <FinishModal />}
+      {finishGame && <FinishModal {...{ setFinishGame, initGame }}/>}
     </main>
   );
 }
