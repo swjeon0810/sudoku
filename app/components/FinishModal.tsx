@@ -1,64 +1,46 @@
 import React from "react";
-// type FinishModalType = {
-//   setFinishGame: any;
-// };
-export default function FinishModal() {
-  return (
-    <div className="flex justify-center absolute z-10 h-screen w-full dark:bg-slate-900 bg-opacity-90">
-      <div className="place-self-center h-72 border rounded-lg shadow relative max-w-sm">
-        <div className="flex justify-end p-2">
-          <button
-            type="button"
-            className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              ></path>
-            </svg>
-          </button>
-        </div>
+import { FaRegSmileWink } from "react-icons/fa";
 
-        <div className="p-6 pt-0 text-center">
-          <svg
-            className="w-16 h-16 text-red-600 mx-auto"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            ></path>
-          </svg>
-          <h3 className="text-lg font-normal text-gray-300 mt-5 mb-6">
-            Success !! Wanna Start Next Game?
+type FinishModalType = {
+  setFinishGame: any;
+  initGame: any;
+};
+
+export default function FinishModal({
+  setFinishGame,
+  initGame,
+}: FinishModalType) {
+  return (
+    <div className="flex justify-center absolute z-10 h-screen w-full dark:bg-slate-900 bg-slate-900 bg-opacity-50">
+      <div className="place-self-center px-10 py-5 content-center border rounded-lg shadow relative max-w-sm bg-white">
+          <div className="flex w-full justify-center">
+            <FaRegSmileWink className="w-14 h-14"/>
+          </div>
+          <h3 className="w-full text-center text-lg font-normal text-black dark:text-white mt-5">
+            축하합니다! 
           </h3>
+          <h4 className="w-full text-center text-lg font-normal text-black dark:text-white mb-6">
+            새로운 게임을 시작할까요? 
+          </h4>
+          <div className="flex justify-center">
           <a
             href="#"
             className="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-base inline-flex items-center px-3 py-2.5 text-center mr-2"
-            onClick={() => {}}
+            onClick={() => {
+              setFinishGame(false);
+              initGame("new");}}
           >
-            Yes
+            예
           </a>
           <a
             href="#"
             className="text-gray-900 bg-white hover:bg-gray-100 focus:ring-4 focus:ring-cyan-200 border border-gray-200 font-medium inline-flex items-center rounded-lg text-base px-3 py-2.5 text-center"
+              onClick={()=> setFinishGame(false)}
           >
-            No
+            취소
           </a>
+          </div>
         </div>
-      </div>
     </div>
   );
 }
