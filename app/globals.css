@@ -62,11 +62,7 @@
 html {
   overflow: hidden;
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to top,
-      transparent,
-      #f3e8ff
-    )
+  background: #d1d5fa
 }
 
 /* 다크 모드 배경색 */
