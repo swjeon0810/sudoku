@@ -13,9 +13,7 @@ import ResetModal from "./components/ResetModal";
 import Cell from "./components/Cell";
 import FinishModal from "./components/FinishModal";
 import { SudokuGrid, SudokuCell } from "./lib/type";
-// import { generateEmptyGrid } from "./lib/generate";
 import { checkDuplicateCell, checkDuplicateMemo } from "./lib/checkDuplicate";
-import Loading from "./components/Loading";
 
 export default function Home() {
 
@@ -112,7 +110,10 @@ export default function Home() {
     // 실행 취소 이벤트
     setFocusCell(initFocusCell); // 셀 선택 해제
     const lastest = historyRef.current.pop();
-    lastest != undefined && setSudokuGrid(lastest);
+    if (lastest != undefined){
+      setSudokuGrid(lastest);
+      checkFinishedNumber(lastest)
+    }  
   };
 
   /////////////////////셀 클릭 이벤트
@@ -303,117 +304,130 @@ export default function Home() {
   };
 
   const deselect= ()=>{
-    // setActivatedNum(null);
     setFocusCell(initFocusCell);
   }
 
   return (
-    <main className="w-full h-screen flex items-center justify-center bg-slate-200 dark:bg-slate-900 dark:text-white">
-      <div className="pt-10 h-full w-full flex flex-col z-10 items-center justify-center gap-3 lg:w-1/2 md:w-3/4">
-        <div className="w-full h-auto ">
-        {/* 다크모드 토글*/}
-        <label className="caret-transparent w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
-          {darkMode ? (
-            <MdDarkMode className="text-black dark:text-white" />
-          ) : (
-            <MdSunny className="text-black dark:text-white" />
-          )}
-
-          <input
-            type="checkbox"
-            value=""
-            className="sr-only peer"
-            onChange={toggleDarkMode}
-          />
-          <div className="relative w-11 h-6 bg-gray-600 rounded-lg dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-lg after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
-        </label>
-        {/* 타이틀 */}
-        <h1 className="py-7 font-serif text-black dark:text-pink-200 w-full text-center font-bold tracking-widest text-lg ">Happy SUDOKU</h1>
-        {/* Toolbar */}
-        <div className="flex w-full px-2 justify-center space-x-1">
-          {/* 새 게임 버튼 */}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={()=>initGame("new")}>
-            <p className="font-bold tracking-widest">새게임</p>
-          </button>
-          {/* 재시작 버튼 */}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={handleResetBtn}>
-            <VscDebugRestart className="w-7 h-7" />
-            <p className="font-bold tracking-widest">재시작</p>
-          </button>
-          {/* 실행취소 버튼*/}
-          <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={undo}>
-            <MdUndo className="w-7 h-7" />
-            <p className="font-bold tracking-widest">뒤로가기</p>
-          </button>
-        </div>
-        </div>
-        <div className="grid ">
-          {
-          sudokuGrid !== null && sudokuGrid.map((row:any, rowIndex:number) => (
-            <div key={rowIndex} className="grid grid-cols-9 ">
-              {row.map((cell:any, colIndex:number) => (
-                <Cell
-                  key={colIndex}
-                  {...{
-                    rowIndex,
-                    colIndex,
-                    cell,
-                    cellClickEvent,
-                    state,
-                    activatedNum,
-                    focusCell,
-                  }}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-        {/* Number Bar*/}
-        <div className="flex w-full justify-center space-x-1">
-          {Array(9)
-            .fill(null)
-            .map((_: any, index: number) => (
-              <button
-                key={index}
-                className={` caret-transparent w-10 h-10 px-2 text-center  text-2xl border border-black dark:border-slate-100 ${
-                  activatedNum === index + 1
-                    && " bg-black text-white dark:bg-white dark:text-black"
-                } 
-              ${
-                finishedNum.has(index + 1)
-                  ? " bg-gray-500 dark:bg-gray-400 text-black " : "dark:hover:bg-slate-100 dark:hover:text-black hover:bg-black hover:text-white"
-              }`}
-                onClick={() => {
-                  handleNumberBarClick(index + 1);
-                }}
-                disabled={finishedNum.has(index + 1)}
-              >
-                {index + 1}
-              </button>
-            ))}
-        </div>
-        <div className="flex w-full px-2 justify-center space-x-2 mb-5 sm:mb-10">
-
-          {/* 메모 버튼*/}
-
-          <button className={`${state==="memo"? "bg-green-300 dark:bg-green-300 text-black dark:text-black": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1  hover:bg-green-300 dark:hover:bg-green-300 hover:text-black dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
-            onClick={()=>{deselect();state==="memo"?setState("none"):setState("memo")}}>
-            <MdEdit className="w-7 h-7 " />
-            <p className="font-bold tracking-widest">메모하기</p>
-          </button>
-          
-          {/* 지우기 버튼*/}
-          <button className={`${state==="delete"? "bg-green-300 dark:bg-green-300 text-black dark:text-black ": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1 hover:bg-green-300 dark:hover:bg-green-300 hover:text-black dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
-            onClick={()=>{deselect();state==="delete"?setState("none"):setState("delete")}}>
-            <MdDelete className="w-7 h-7 " />
-            <p className="font-bold tracking-widest">지우기</p>
-          </button>
-
-        </div>
+    <main className="w-full h-full flex items-center justify-center text-black dark:text-white overflow-hidden">
+      
+      <div className="my-3 w-full h-full flex-col z-10 items-center justify-center gap-3 md:w-1/2 lg:3/4">
         
+        <div className="w-full h-auto">
+              {/* 다크모드 토글*/}
+              <label className="caret-transparent w-full flex justify-end inline-flex items-center cursor-pointer pe-2 space-x-2">
+                {darkMode ? (
+                  <MdDarkMode />
+                ) : (
+                  <MdSunny  />
+                )}
+
+                <input
+                  type="checkbox"
+                  value=""
+                  className="sr-only peer"
+                  onChange={toggleDarkMode}
+                />
+                <div className="relative w-11 h-6 bg-gray-600 rounded-lg dark:bg-gray-700  peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-lg after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
+              </label>
+        </div>
+
+        {/* 타이틀 */}
+        <h1 className="my-5 font-serif dark:text-pink-200 w-full text-center font-bold tracking-widest text-lg ">Happy SUDOKU</h1>
+       
+        {/* content  */}
+        <div className="flex flex-col w-full px-2 gap-3">
+                {/* Toolbar */}
+                <div className="flex space-x-1">
+                    {/* 새 게임 버튼 */}
+                    <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 pointer-events-auto active:bg-pink-300 dark:active:bg-pink-300 md:hover:bg-pink-300 dark:md:hover:bg-pink-300 dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={()=>initGame("new")}>
+                      <p className="font-bold tracking-widest">새게임</p>
+                    </button>
+                    {/* 재시작 버튼 */}
+                    <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={handleResetBtn}>
+                      <VscDebugRestart className="w-7 h-7" />
+                      <p className="font-bold tracking-widest">재시작</p>
+                    </button>
+                    {/* 실행취소 버튼*/}
+                    <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 active:bg-pink-300 md:hover:bg-pink-300 dark:active:bg-pink-300 dark:md:hover:bg-pink-300 dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={undo}>
+                      <MdUndo className="w-7 h-7" />
+                      <p className="font-bold tracking-widest">뒤로가기</p>
+                    </button>
+                </div>
+                <div className="flex w-full justify-center">
+                  {loading ? 
+                        <div className="grid grid-cols-9 grid-rows-9 w-fit">
+                          {Array(81)
+                            .fill(0)
+                            .map((_, index) => (
+                              <div key={index} className="bg-slate-400 dark:bg-slate-600 border border-white bg-opacity-50 dark:bg-opacity-80 dark:border-blue-100 animate-pulse w-10 h-10 sm:w-12 sm:h-12 "></div>
+                            ))}
+                        </div>
+                        :
+                        <div className="grid w-fit ">
+                          {
+                          sudokuGrid !== null && sudokuGrid.map((row:any, rowIndex:number) => (
+                            <div key={rowIndex} className="grid grid-cols-9 ">
+                              {row.map((cell:any, colIndex:number) => (
+                                <Cell
+                                  key={colIndex}
+                                  {...{
+                                    rowIndex,
+                                    colIndex,
+                                    cell,
+                                    cellClickEvent,
+                                    state,
+                                    activatedNum,
+                                    focusCell,
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                        }
+                </div>
+
+                {/* Number Bar*/}
+                <div className="flex w-full justify-center space-x-1">
+                  {Array(9)
+                    .fill(null)
+                    .map((_: any, index: number) => (
+                      <button
+                        key={index}
+                        className={` caret-transparent w-10 h-10 sm:w-12 sm:h-12 px-2 text-center  text-2xl border border-black dark:border-slate-100 ${
+                          activatedNum === index + 1
+                            && " bg-black text-white dark:bg-white dark:text-black"
+                        } 
+                      ${
+                        finishedNum.has(index + 1)
+                          ? " bg-gray-500 dark:bg-gray-400 text-black " : "dark:hover:bg-slate-100 dark:hover:text-black hover:bg-black hover:text-white"
+                      }`}
+                        onClick={() => {
+                          handleNumberBarClick(index + 1);
+                        }}
+                        disabled={finishedNum.has(index + 1)}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
+                </div>
+              <div className="flex w-full space-x-2">
+                {/* 메모 버튼*/}
+                <button className={`${state==="memo"? "bg-green-300 dark:bg-green-300 text-black dark:text-black": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1 md:hover:bg-green-300 dark:md:hover:bg-green-300 hover:text-black dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
+                  onClick={()=>{deselect();state==="memo"?setState("none"):setState("memo")}}>
+                  <MdEdit className="w-7 h-7 " />
+                  <p className="font-bold tracking-widest">메모하기</p>
+                </button>
+                {/* 지우기 버튼*/}
+                <button className={`${state==="delete"? "bg-green-300 dark:bg-green-300 text-black dark:text-black ": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1 md:hover:bg-green-300 dark:md:hover:bg-green-300 hover:text-black dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
+                  onClick={()=>{deselect();state==="delete"?setState("none"):setState("delete")}}>
+                  <MdDelete className="w-7 h-7 " />
+                  <p className="font-bold tracking-widest">지우기</p>
+                </button>
+              </div>
       </div>
-      {/* 로딩 화면 */}
-      {loading && <Loading/>}
+      </div>
+      
       {/* reset modal */}
       {showResetModal && <ResetModal {...{ setShowResetModal, initGame }} />}
       {/* Finish modal */}
