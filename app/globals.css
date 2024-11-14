@@ -8,31 +8,131 @@
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
 
+  --secondary-glow: conic-gradient(
+    from 10deg at 50% 50%,
+    #eb7494 0deg,
+    #ae77b2 55deg,
+    #97b5da 120deg,
+    #0099ca 160deg,
+    transparent 360deg
+  );
+
+  --third-glow: conic-gradient(
+    from 90deg at 50% 50%,
+    #ff8b7e 0deg,
+    #e24e6b 160deg,
+    #7ed2da 120deg,
+    #8bdce0 55deg,
+    transparent 360deg
+  );
+
 }
 
 /* 시스템이 다크모드일때 . */
 @media (prefers-color-scheme: dark) {
   :root {
+
     --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
+    --background-start-rgb: 15, 23, 42;
     --background-end-rgb: 0, 0, 0;
+
+    --secondary-glow: conic-gradient(
+      from 10deg at 50% 50%,
+      #b33752 0deg,
+      #73408a 55deg,
+      #4a6b8e 120deg,
+      #006b94 160deg,
+      transparent 360deg
+    );
+
+    --third-glow: conic-gradient(
+      from 90deg at 50% 50%,
+      #b35852 0deg,
+      #a42e4c 160deg,
+      #4a8e92 120deg,
+      #589a9c 55deg,
+      transparent 360deg
+    );
+
+  }
+
+}
+
+
+html {
+  overflow: hidden;
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to top,
+      transparent,
+      #f3e8ff
+    )
+}
+
+/* 다크 모드 배경색 */
+html.dark {
+  background: rgb(15, 23, 42);
+  color: #ffffff; /* 다크 모드 텍스트 색상 */
+}
+
+
+
+body::before {
+  background: var(--third-glow);
+  border-radius: 50%;
+  width: 50vw;
+  height: 50vw;
+  margin-left: -200px;
+  filter:blur(90px);  
+  top: calc(50vh - 50vw/2);
+  left: calc(50vw );
+
+  animation: animateBefore 7s cubic-bezier(0.47, 0, 0.745, 0.715) infinite;
+}
+
+body::after {
+  background: var(--secondary-glow);
+  border-radius: 50%;
+  width: 500px;
+  height: 700px;
+  filter:blur(90px);
+  top: calc(50vh - 50vw/2);
+  left: calc(50vw - 50vw/2);
+  content: '';
+  position: absolute;
+  z-index: -1;
+  /* opacity:0.8; */
+/*  7s: 지속시간, cubic-bezier: 리듬/ 속도 */
+  animation: animateAfter 7s cubic-bezier(0.47, 0, 0.745, 0.715) infinite;
+}
+
+@keyframes animateBefore {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    /* 50% 지점에서는 200픽셀 아래로 슬라이딩하면서 원래 크기의 80%로 줄어든다. */
+    transform: translateY(200px) scale(0.8); 
+
+
+  }
+  100% {
+    /* 다시 원래대로 돌아간다. */
+    transform: translateY(0);
   }
 }
 
-body {
-  overflow: hidden;
-  position: relative;
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
-}
+@keyframes animateAfter{
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-250px) scale(1.2);
 
-.btn {
-  @apply w-8 h-8 rounded-xl border border-black p-0.5 text-black hover:bg-white dark:border-blue-100 dark:text-blue-100 dark:hover:bg-black dark:focus:bg-blue-950;
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 
 @layer utilities {
