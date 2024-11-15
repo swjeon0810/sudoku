@@ -52,7 +52,7 @@ export default function Home() {
     } else if (option === "new"){ // 새 게임일 경우 new
       
       try {
-        const response = await fetch('/api/sudoku'); // API 를 통해 새로운 게임 데이터를 받아와서 그리드에 세팅.
+        const response = await fetch('/api/sudoku', {cache: 'no-store'}); // API 를 통해 새로운 게임 데이터를 받아와서 그리드에 세팅.
         const data = await response.json();
         newData = data.medium
         sessionStorage.setItem("thisGame", JSON.stringify(data))
