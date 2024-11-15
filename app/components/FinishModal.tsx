@@ -11,8 +11,8 @@ export default function FinishModal({
   initGame,
 }: FinishModalType) {
   return (
-    <div className="flex justify-center absolute z-10 h-screen w-full dark:bg-slate-900 bg-slate-900 bg-opacity-50">
-      <div className="place-self-center px-10 py-5 content-center border rounded-lg shadow relative max-w-sm bg-white">
+    <div className="flex justify-center fixed z-10 h-full w-full top-0 left-0 bg-white dark:bg-slate-900 bg-opacity-90 dark:bg-opacity-90">
+      <div className="place-self-center px-10 py-5 content-center border rounded-lg shadow relative max-w-sm bg-white dark:bg-slate-900">
           <div className="flex w-full justify-center">
             <FaRegSmileWink className="w-14 h-14"/>
           </div>
