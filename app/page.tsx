@@ -339,16 +339,16 @@ export default function Home() {
                 {/* Toolbar */}
                 <div className="flex space-x-1">
                     {/* 새 게임 버튼 */}
-                    <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 pointer-events-auto active:bg-pink-300 dark:active:bg-pink-300 md:hover:bg-pink-300 dark:md:hover:bg-pink-300 dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={()=>initGame("new")}>
+                    <button className="space-x-1 text-black dark:text-white bg-slate-100 dark:bg-slate-900 pointer-events-auto active:bg-pink-300 dark:active:bg-pink-300 md:hover:bg-pink-300 dark:md:hover:bg-pink-300 dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={()=>initGame("new")}>
                       <p className="font-bold tracking-widest">새게임</p>
                     </button>
                     {/* 재시작 버튼 */}
-                    <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={handleResetBtn}>
+                    <button className="space-x-1 text-black dark:text-white bg-slate-100 dark:bg-slate-900 hover:bg-green-300 dark:hover:bg-green-300 dark:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={handleResetBtn}>
                       <VscDebugRestart className="w-7 h-7" />
                       <p className="font-bold tracking-widest">재시작</p>
                     </button>
                     {/* 실행취소 버튼*/}
-                    <button className="space-x-1 text-black dark:text-white bg-white dark:bg-slate-950 active:bg-pink-300 md:hover:bg-pink-300 dark:active:bg-pink-300 dark:md:hover:bg-pink-300 dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={undo}>
+                    <button className="space-x-1 text-black dark:text-white bg-slate-100 dark:bg-slate-900 active:bg-pink-300 md:hover:bg-pink-300 dark:active:bg-pink-300 dark:md:hover:bg-pink-300 dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg" onClick={undo}>
                       <MdUndo className="w-7 h-7" />
                       <p className="font-bold tracking-widest">뒤로가기</p>
                     </button>
@@ -413,13 +413,13 @@ export default function Home() {
                 </div>
               <div className="flex w-full space-x-2">
                 {/* 메모 버튼*/}
-                <button className={`${state==="memo"? "bg-green-300 dark:bg-green-300 text-black dark:text-black": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1 md:hover:bg-green-300 dark:md:hover:bg-green-300 hover:text-black dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
+                <button className={`${state==="memo"? "bg-green-300 dark:bg-green-300 text-black dark:text-black": "bg-slate-100 dark:bg-slate-900 text-black dark:text-white "} space-x-1 md:hover:bg-green-300 dark:md:hover:bg-green-300 hover:text-black dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
                   onClick={()=>{deselect();state==="memo"?setState("none"):setState("memo")}}>
                   <MdEdit className="w-7 h-7 " />
                   <p className="font-bold tracking-widest">메모하기</p>
                 </button>
                 {/* 지우기 버튼*/}
-                <button className={`${state==="delete"? "bg-green-300 dark:bg-green-300 text-black dark:text-black ": "bg-white dark:bg-slate-950 text-black dark:text-white "} space-x-1 md:hover:bg-green-300 dark:md:hover:bg-green-300 hover:text-black dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
+                <button className={`${state==="delete"? "bg-green-300 dark:bg-green-300 text-black dark:text-black ": "bg-slate-100 dark:bg-slate-900 text-black dark:text-white "} space-x-1 md:hover:bg-green-300 dark:md:hover:bg-green-300 hover:text-black dark:md:hover:text-black py-1 w-full flex inline-flex justify-center items-center cursor-pointer border rounded-lg`}
                   onClick={()=>{deselect();state==="delete"?setState("none"):setState("delete")}}>
                   <MdDelete className="w-7 h-7 " />
                   <p className="font-bold tracking-widest">지우기</p>
