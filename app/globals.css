@@ -71,7 +71,9 @@ html.dark {
   color: #ffffff; /* 다크 모드 텍스트 색상 */
 }
 
-
+body {
+  overflow: hidden;
+}
 
 body::before {
   background: var(--third-glow);
@@ -82,6 +84,9 @@ body::before {
   filter:blur(90px);  
   top: calc(50vh - 50vw/2);
   left: calc(50vw );
+  content: ' ';
+  position: absolute;
+  z-index: -1;
 
   animation: animateBefore 7s cubic-bezier(0.47, 0, 0.745, 0.715) infinite;
 }
@@ -94,7 +99,9 @@ body::after {
   filter:blur(90px);
   top: calc(50vh - 50vw/2);
   left: calc(50vw - 50vw/2);
-  content: '';
+  content: ' ';
+  font-size: large;
+  color:#a42e4c;
   position: absolute;
   z-index: -1;
   /* opacity:0.8; */
