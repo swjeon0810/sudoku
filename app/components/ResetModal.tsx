@@ -8,8 +8,8 @@ export default function ResetModal({
   initGame,
 }: ResetModalType) {
   return (
-    <div className="flex justify-center absolute z-10 h-screen w-full bg-white dark:bg-slate-900 bg-opacity-90">
-      <div className="px-10 py-5 place-self-center content-center border rounded-lg shadow relative max-w-sm">
+    <div className="flex justify-center fixed z-10 h-full w-full top-0 left-0 bg-white dark:bg-slate-900 bg-opacity-90 dark:bg-opacity-90">
+      <div className="px-10 py-5 place-self-center content-center border rounded-lg shadow relative max-w-sm bg-white dark:bg-slate-900">
           <svg
             className="w-16 h-16 text-red-600 mx-auto"
             fill="none"
