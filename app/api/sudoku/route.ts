@@ -1,13 +1,18 @@
 import axios from 'axios';
+import { timeStamp } from 'console';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   // 난이도: easy, medium, hard, 답은 data에 담겨있음
   try {
-    const response = await axios.get('https://sudoku-game-and-api.netlify.app/api/sudoku'); // 실제 API URL로 변경
-    const res = NextResponse.json(response.data);
-    res.headers.set('Cache-Control', 'no-store, must-revalidate'); // 캐시를 무효화하고 새 데이터로 요청하도록 설정
+    const currentTime = new Date().getTime();
+    const response = await axios.get('https://sudoku-game-and-api.netlify.app/api/sudoku', {
+      params: {
+        timeStamp:currentTime
+      }
+    }); // 실제 API URL로 변경
 
+    const res = NextResponse.json(response.data);
     return res;
 
   } catch (error) {
